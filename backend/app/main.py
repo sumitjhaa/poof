@@ -16,6 +16,7 @@ from app.limiter import limiter
 from app.security import SecurityHeadersMiddleware
 
 cleanup_task: Task | None = None
+keepalive_task: Task | None = None
 
 
 async def cleanup_loop():
@@ -27,18 +28,36 @@ async def cleanup_loop():
             print(f"Cleaned up {deleted} expired secrets")
 
 
+async def keepalive_loop():
+    import asyncio
+    import httpx
+
+    if not settings.frontend_url:
+        return
+
+    while True:
+        await asyncio.sleep(600)
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                await client.get(settings.frontend_url)
+        except Exception:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import asyncio
-    global cleanup_task
+    global cleanup_task, keepalive_task
 
     # Initialize database
     from app.storage import storage
     await storage.init()
 
     cleanup_task = asyncio.create_task(cleanup_loop())
+    keepalive_task = asyncio.create_task(keepalive_loop())
     yield
     cleanup_task.cancel()
+    keepalive_task.cancel()
 
 
 app = FastAPI(

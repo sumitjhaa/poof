@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import KeepAlive from "@/components/KeepAlive";
 
 export const metadata: Metadata = {
   title: "Poof - One-Time Secret Sharing",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <KeepAlive />
+        {children}
+      </body>
     </html>
   );
 }

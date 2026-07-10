@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_name: str = "Poof"
     debug: bool = False
     allowed_origins: str = "http://localhost:3000"
+    frontend_url: str = ""
 
     def get_allowed_origins(self) -> list[str]:
         try:
