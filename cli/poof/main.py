@@ -2,6 +2,7 @@ import click
 
 from poof import __version__
 from poof.commands import create, read
+from poof.commands.files import upload, download
 
 
 @click.group()
@@ -13,6 +14,8 @@ def cli():
 
 cli.add_command(create)
 cli.add_command(read)
+cli.add_command(upload)
+cli.add_command(download)
 
 
 if __name__ == "__main__":

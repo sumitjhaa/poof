@@ -16,6 +16,15 @@ export interface SecretReadResponse {
   has_password: boolean;
 }
 
+export interface FileUploadResponse {
+  id: string;
+  filename: string;
+  size: number;
+  created_at: string;
+  expires_at: string;
+  url: string;
+}
+
 export async function createSecret(
   encryptedData: string,
   expiresIn: number = 3600,
@@ -63,6 +72,35 @@ export async function readSecret(
 
   if (!res.ok) {
     throw new Error("Failed to read secret");
+  }
+
+  return res.json();
+}
+
+export async function uploadFile(
+  file: File,
+  expiresIn: string = "1h",
+  maxViews: number = 1
+): Promise<FileUploadResponse> {
+  const expiryMap: Record<string, number> = {
+    "5m": 300,
+    "1h": 3600,
+    "1d": 86400,
+    "7d": 604800,
+  };
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("expires_in", String(expiryMap[expiresIn] || 3600));
+  formData.append("max_views", String(maxViews));
+
+  const res = await fetch(`${API_URL}/api/files/`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to upload file");
   }
 
   return res.json();
