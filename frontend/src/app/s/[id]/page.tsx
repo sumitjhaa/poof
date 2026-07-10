@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { decodeKey, decrypt } from "@/utils/crypto";
 import { readSecret } from "@/utils/api";
@@ -15,7 +15,7 @@ export default function ReadSecret() {
   const [errorMsg, setErrorMsg] = useState("");
   const [password, setPassword] = useState("");
 
-  const fetchSecret = async (pwd?: string) => {
+  const fetchSecret = useCallback(async (pwd?: string) => {
     const hash = window.location.hash;
     if (!hash.startsWith("#key=")) {
       setStatus("error");
@@ -45,11 +45,11 @@ export default function ReadSecret() {
         setErrorMsg(err instanceof Error ? err.message : "Failed to decrypt secret");
       }
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchSecret();
-  }, [id]);
+  }, [fetchSecret]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

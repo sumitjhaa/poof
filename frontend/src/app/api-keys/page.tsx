@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Spinner } from '@/components';
 import styles from './page.module.css';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface APIKey {
   id: string;
@@ -21,13 +23,9 @@ export default function APIKeysPage() {
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchKeys();
-  }, []);
-
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/keys/');
+      const res = await fetch(`${API_URL}/api/keys/`);
       const data = await res.json();
       setKeys(data.keys || []);
     } catch (err) {
@@ -35,14 +33,18 @@ export default function APIKeysPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
 
     setCreating(true);
     try {
-      const res = await fetch('http://localhost:8000/api/keys/', {
+      const res = await fetch(`${API_URL}/api/keys/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, rate_limit: rateLimit }),
@@ -61,7 +63,7 @@ export default function APIKeysPage() {
 
   const handleRevoke = async (keyId: string) => {
     try {
-      await fetch(`http://localhost:8000/api/keys/${keyId}`, {
+      await fetch(`${API_URL}/api/keys/${keyId}`, {
         method: 'DELETE',
       });
       fetchKeys();
@@ -86,7 +88,7 @@ export default function APIKeysPage() {
             <code className={styles.key}>{newKey}</code>
           </div>
           <p className={styles.warning}>
-            Copy this key now - it won't be shown again!
+            Copy this key now - it will not be shown again!
           </p>
           <div className={styles.actions}>
             <Button onClick={copyKey}>Copy Key</Button>

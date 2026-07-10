@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Spinner } from '@/components';
 import styles from './page.module.css';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface AuditEntry {
   id: string;
@@ -20,14 +22,9 @@ export default function AuditPage() {
   const [stats, setStats] = useState<{ total: number; byEvent: Record<string, number> } | null>(null);
   const [filter, setFilter] = useState('');
 
-  useEffect(() => {
-    fetchEntries();
-    fetchStats();
-  }, []);
-
-  const fetchEntries = async () => {
+  const fetchEntries = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/audit/?limit=100');
+      const res = await fetch(`${API_URL}/api/audit/?limit=100`);
       const data = await res.json();
       setEntries(data.entries || []);
     } catch (err) {
@@ -35,11 +32,11 @@ export default function AuditPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/audit/stats');
+      const res = await fetch(`${API_URL}/api/audit/stats`);
       const data = await res.json();
       setStats({
         total: data.total_events,
@@ -48,11 +45,16 @@ export default function AuditPage() {
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchEntries();
+    fetchStats();
+  }, [fetchEntries, fetchStats]);
 
   const exportLogs = async (format: 'json' | 'csv') => {
     try {
-      const res = await fetch(`http://localhost:8000/api/audit/export?format=${format}`);
+      const res = await fetch(`${API_URL}/api/audit/export?format=${format}`);
       const text = await res.text();
       const blob = new Blob([text], { type: format === 'json' ? 'application/json' : 'text/csv' });
       const url = URL.createObjectURL(blob);
