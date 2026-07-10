@@ -10,6 +10,7 @@ from app.config import settings
 from app.routes.secrets import router as secrets_router
 from app.storage import storage
 from app.limiter import limiter
+from app.security import SecurityHeadersMiddleware
 
 cleanup_task: Task | None = None
 
@@ -42,6 +43,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -55,4 +57,17 @@ app.include_router(secrets_router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/api/info")
+async def info():
+    return {
+        "name": "Poof",
+        "version": "0.1.0",
+        "description": "Secure one-time secret sharing",
+        "links": {
+            "docs": "/docs",
+            "github": "https://github.com/sumitjhaa/poof",
+        },
+    }

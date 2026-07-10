@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class SecretCreate(BaseModel):
-    encrypted_data: str
+    encrypted_data: str = Field(..., min_length=1, max_length=1048576)  # 1MB max
     expires_in: int = Field(default=3600, ge=60, le=2592000)  # 1 min to 30 days
     max_views: int = Field(default=1, ge=1, le=10)
 
