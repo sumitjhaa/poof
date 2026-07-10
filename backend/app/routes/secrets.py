@@ -1,15 +1,17 @@
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.models import SecretCreate, SecretResponse, SecretRead, ErrorResponse
 from app.storage import storage
+from app.limiter import limiter
 
 router = APIRouter(prefix="/api/secrets", tags=["secrets"])
 
 
 @router.post("", response_model=SecretResponse, status_code=201)
-async def create_secret(data: SecretCreate):
+@limiter.limit("10/minute")
+async def create_secret(request: Request, data: SecretCreate):
     id = str(uuid4())
     secret = storage.create(
         id=id,
@@ -26,7 +28,8 @@ async def create_secret(data: SecretCreate):
 
 
 @router.get("/{id}", response_model=SecretRead, responses={404: {"model": ErrorResponse}, 410: {"model": ErrorResponse}})
-async def read_secret(id: str):
+@limiter.limit("30/minute")
+async def read_secret(request: Request, id: str):
     secret = storage.get(id)
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found or expired"})

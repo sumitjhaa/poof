@@ -1,14 +1,46 @@
+from contextlib import asynccontextmanager
+from asyncio import Task
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.routes.secrets import router as secrets_router
+from app.storage import storage
+from app.limiter import limiter
+
+cleanup_task: Task | None = None
+
+
+async def cleanup_loop():
+    import asyncio
+    while True:
+        await asyncio.sleep(60)
+        deleted = storage.cleanup_expired()
+        if deleted:
+            print(f"Cleaned up {deleted} expired secrets")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import asyncio
+    global cleanup_task
+    cleanup_task = asyncio.create_task(cleanup_loop())
+    yield
+    cleanup_task.cancel()
+
 
 app = FastAPI(
     title=settings.app_name,
     docs_url="/docs" if settings.debug else None,
     redoc_url=None,
+    lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
