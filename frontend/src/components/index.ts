@@ -8,3 +8,4 @@ export { CopyButton } from "./CopyButton";
 export { SecretDisplay } from "./SecretDisplay";
 export { Header } from "./Header";
 export { Footer } from "./Footer";
+export { Countdown } from "./Countdown";

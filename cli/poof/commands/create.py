@@ -14,7 +14,8 @@ API_URL = "http://localhost:8000"
 @click.option("-e", "--expires", default="1h", help="Expiry time (5m, 1h, 1d)")
 @click.option("-v", "--views", default=1, help="Max views (default: 1)")
 @click.option("-p", "--password", is_flag=True, help="Password protect this secret")
-def create(secret: str, expires: str, views: int, password: bool):
+@click.option("-w", "--webhook", default=None, help="Webhook URL for expiration notification")
+def create(secret: str, expires: str, views: int, password: bool, webhook: str):
     """Create a new secret to share."""
     expires_in = parse_expiry(expires)
 
@@ -46,6 +47,7 @@ def create(secret: str, expires: str, views: int, password: bool):
                 "max_views": views,
                 "password_hash": password_hash,
                 "password_salt": password_salt,
+                "webhook_url": webhook,
             },
             timeout=10,
         )
@@ -64,4 +66,6 @@ def create(secret: str, expires: str, views: int, password: bool):
     click.echo(f"Max views: {views}")
     if password:
         click.echo(f"Password: Yes")
+    if webhook:
+        click.echo(f"Webhook: Yes (notification on expiry)")
     click.echo(f"\n⚠ Share this link before it expires!")

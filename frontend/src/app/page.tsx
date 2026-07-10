@@ -25,6 +25,8 @@ export default function Home() {
   const [maxViews, setMaxViews] = useState(1);
   const [password, setPassword] = useState("");
   const [usePassword, setUsePassword] = useState(false);
+  const [webhook, setWebhook] = useState("");
+  const [useWebhook, setUseWebhook] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ url: string } | null>(null);
 
@@ -45,7 +47,14 @@ export default function Home() {
         passwordSalt = salt;
       }
 
-      const response = await createSecret(encrypted, expiresIn, maxViews, passwordHash, passwordSalt);
+      const response = await createSecret(
+        encrypted,
+        expiresIn,
+        maxViews,
+        passwordHash,
+        passwordSalt,
+        useWebhook ? webhook : undefined
+      );
       const keyEncoded = encodeKey(key);
       const fullUrl = `${window.location.origin}/s/${response.id}#key=${keyEncoded}`;
 
@@ -128,6 +137,25 @@ export default function Home() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password..."
+            />
+          </div>
+        )}
+        <div className="checkbox-group">
+          <input
+            type="checkbox"
+            id="useWebhook"
+            checked={useWebhook}
+            onChange={(e) => setUseWebhook(e.target.checked)}
+          />
+          <label htmlFor="useWebhook">Notify on expiration</label>
+        </div>
+        {useWebhook && (
+          <div className="form-group">
+            <input
+              type="url"
+              value={webhook}
+              onChange={(e) => setWebhook(e.target.value)}
+              placeholder="https://your-webhook-url.com/notify"
             />
           </div>
         )}

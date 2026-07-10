@@ -50,6 +50,9 @@ class MemoryStorage:
         return False
 
     def cleanup_expired(self) -> int:
+        import asyncio
+        from app.webhooks import notify_webhooks
+
         now = datetime.now(timezone.utc)
         expired = [
             id for id, s in self.secrets.items()
@@ -57,4 +60,8 @@ class MemoryStorage:
         ]
         for id in expired:
             self.delete(id)
+            try:
+                asyncio.create_task(notify_webhooks(id, "expired"))
+            except RuntimeError:
+                pass
         return len(expired)

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from app.models import SecretCreate, SecretResponse
 from app.storage import storage
 from app.limiter import limiter
+from app.webhooks import webhook_store, Webhook
 
 router = APIRouter()
 
@@ -20,9 +21,22 @@ async def create_secret(request: Request, data: SecretCreate):
         password_hash=data.password_hash,
         password_salt=data.password_salt,
     )
+
+    # Register webhook if provided
+    if data.webhook_url:
+        webhook = Webhook(
+            id=str(uuid4()),
+            url=data.webhook_url,
+            secret_id=id,
+            event="expired",
+            created_at=secret["created_at"],
+        )
+        webhook_store.add(webhook)
+
     return SecretResponse(
         id=id,
         created_at=secret["created_at"],
         expires_at=secret["expires_at"],
         url=f"/s/{id}",
+        webhook_id=webhook.id if data.webhook_url else None,
     )

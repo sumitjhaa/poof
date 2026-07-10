@@ -30,7 +30,8 @@ export async function createSecret(
   expiresIn: number = 3600,
   maxViews: number = 1,
   passwordHash?: string,
-  passwordSalt?: string
+  passwordSalt?: string,
+  webhookUrl?: string
 ): Promise<SecretCreateResponse> {
   const res = await fetch(`${API_URL}/api/secrets/`, {
     method: "POST",
@@ -41,6 +42,7 @@ export async function createSecret(
       max_views: maxViews,
       password_hash: passwordHash,
       password_salt: passwordSalt,
+      webhook_url: webhookUrl,
     }),
   });
 
