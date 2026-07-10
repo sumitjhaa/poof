@@ -5,6 +5,7 @@ from app.routes.read import router as read_router
 from app.routes.delete import router as delete_router
 from app.routes.files import router as files_router
 from app.routes.api_keys import router as api_keys_router
+from app.routes.audit import router as audit_router
 
 router = APIRouter(prefix="/api/secrets", tags=["secrets"])
 router.include_router(create_router)
@@ -16,3 +17,6 @@ files.include_router(files_router)
 
 api_keys = APIRouter(prefix="/api/keys", tags=["api-keys"])
 api_keys.include_router(api_keys_router)
+
+audit = APIRouter(prefix="/api/audit", tags=["audit"])
+audit.include_router(audit_router)

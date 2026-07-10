@@ -4,6 +4,7 @@ from app.models import SecretRead, ErrorResponse
 from app.storage import storage
 from app.limiter import limiter
 from app.auth import verify_password
+from app.audit import audit_log, AuditEvent
 
 router = APIRouter()
 
@@ -37,6 +38,16 @@ async def read_secret(request: Request, id: str, password: str = None):
 
     # Increment view count
     await storage.increment_view(id)
+
+    # Log audit event
+    audit_log.log(
+        event=AuditEvent.SECRET_READ,
+        resource_id=id,
+        resource_type="secret",
+        metadata={"views_remaining": views_remaining - 1},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return SecretRead(
         id=id,

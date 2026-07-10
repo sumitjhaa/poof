@@ -4,6 +4,7 @@ from poof import __version__
 from poof.commands import create, read
 from poof.commands.files import upload, download
 from poof.commands.apikeys import apikeys
+from poof.commands.audit import audit
 
 
 @click.group()
@@ -18,6 +19,7 @@ cli.add_command(read)
 cli.add_command(upload)
 cli.add_command(download)
 cli.add_command(apikeys)
+cli.add_command(audit)
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from fastapi.responses import Response
 from app.models import ErrorResponse
 from app.storage import storage
 from app.limiter import limiter
+from app.audit import audit_log, AuditEvent
 
 router = APIRouter()
 
@@ -53,6 +54,14 @@ async def upload_file(
         password_salt=password_salt,
     )
 
+    audit_log.log(
+        event=AuditEvent.FILE_UPLOADED,
+        resource_id=secret_id,
+        resource_type="file",
+        metadata={"filename": file.filename, "size": len(content)},
+        ip_address=request.client.host if request.client else None,
+    )
+
     return {
         "id": secret["id"],
         "filename": file.filename,
@@ -93,6 +102,14 @@ async def download_file(
 
     import json
     file_data = json.loads(secret["encrypted_data"])
+
+    audit_log.log(
+        event=AuditEvent.FILE_DOWNLOADED,
+        resource_id=id,
+        resource_type="file",
+        metadata={"filename": file_data["filename"]},
+        ip_address=request.client.host if request.client else None,
+    )
 
     return Response(
         content=bytes.fromhex(file_data["data"]),

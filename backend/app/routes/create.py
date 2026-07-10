@@ -5,6 +5,7 @@ from app.models import SecretCreate, SecretResponse
 from app.storage import storage
 from app.limiter import limiter
 from app.webhooks import webhook_store, Webhook
+from app.audit import audit_log, AuditEvent
 
 router = APIRouter()
 
@@ -32,6 +33,16 @@ async def create_secret(request: Request, data: SecretCreate):
             created_at=secret["created_at"],
         )
         webhook_store.add(webhook)
+
+    # Log audit event
+    audit_log.log(
+        event=AuditEvent.SECRET_CREATED,
+        resource_id=id,
+        resource_type="secret",
+        metadata={"expires_in": data.expires_in, "max_views": data.max_views},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return SecretResponse(
         id=id,
