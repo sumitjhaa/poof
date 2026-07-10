@@ -7,7 +7,7 @@ setup(
     install_requires=[
         "click>=8.0",
         "httpx>=0.28.0",
-        "pynacl>=1.5.0",
+        "cryptography>=44.0.0",
     ],
     entry_points={
         "console_scripts": [
