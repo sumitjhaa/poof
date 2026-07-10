@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.routes import router as secrets_router
 from app.routes import files as files_router
+from app.routes import api_keys as api_keys_router
 from app.storage import storage
 from app.limiter import limiter
 from app.security import SecurityHeadersMiddleware
@@ -60,6 +61,7 @@ app.add_middleware(
 
 app.include_router(secrets_router)
 app.include_router(files_router)
+app.include_router(api_keys_router)
 
 
 @app.get("/health")

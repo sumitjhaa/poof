@@ -1,0 +1,159 @@
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.createForm {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.formRow {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.select {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+}
+
+.keyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.keyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.keyInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.keyName {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.keyValue {
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.keyRate {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.keyActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.newKey {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.key {
+  display: block;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.875rem;
+  word-break: break-all;
+}
+
+.warning {
+  color: #d97706;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+}
