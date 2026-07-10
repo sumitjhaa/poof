@@ -1,0 +1,143 @@
+/* ── Catppuccin Dark ── */
+[data-theme="catppuccin-dark"] {
+  --bg: #1e1e2e;
+  --bg-subtle: #181825;
+  --surface: #313244;
+  --surface-hover: #45475a;
+  --overlay: #585b70;
+  --text: #cdd6f4;
+  --text-muted: #a6adc8;
+  --text-faint: #6c7086;
+  --primary: #cba6f7;
+  --primary-hover: #b4befe;
+  --primary-muted: rgba(203,166,247,0.15);
+  --success: #a6e3a1;
+  --success-muted: rgba(166,227,161,0.15);
+  --error: #f38ba8;
+  --error-muted: rgba(243,139,168,0.15);
+  --info: #89dceb;
+  --info-muted: rgba(137,220,235,0.15);
+  --warning: #f9e2af;
+  --warning-muted: rgba(249,226,175,0.15);
+  --glow: rgba(203,166,247,0.12);
+}
+
+/* ── Catppuccin Light ── */
+[data-theme="catppuccin-light"] {
+  --bg: #eff1f5;
+  --bg-subtle: #e6e9ef;
+  --surface: #ccd0da;
+  --surface-hover: #bcc0cc;
+  --overlay: #9ca0b0;
+  --text: #4c4f69;
+  --text-muted: #6c6f85;
+  --text-faint: #9ca0b0;
+  --primary: #8839ef;
+  --primary-hover: #7287fd;
+  --primary-muted: rgba(136,57,239,0.12);
+  --success: #40a02b;
+  --success-muted: rgba(64,160,43,0.12);
+  --error: #d20f39;
+  --error-muted: rgba(210,15,57,0.12);
+  --info: #04a5e5;
+  --info-muted: rgba(4,165,229,0.12);
+  --warning: #df8e1d;
+  --warning-muted: rgba(223,142,29,0.12);
+  --glow: rgba(136,57,239,0.1);
+}
+
+/* ── Rose Pine Dark ── */
+[data-theme="rosepine-dark"] {
+  --bg: #191724;
+  --bg-subtle: #1f1d2e;
+  --surface: #26233a;
+  --surface-hover: #393552;
+  --overlay: #56526e;
+  --text: #e0def4;
+  --text-muted: #bcc0d0;
+  --text-faint: #6e6a86;
+  --primary: #c4a7e7;
+  --primary-hover: #ebbcba;
+  --primary-muted: rgba(196,167,231,0.12);
+  --success: #31748f;
+  --success-muted: rgba(49,116,143,0.15);
+  --error: #eb6f92;
+  --error-muted: rgba(235,111,146,0.15);
+  --info: #9ccfd8;
+  --info-muted: rgba(156,207,216,0.12);
+  --warning: #f6c177;
+  --warning-muted: rgba(246,193,119,0.12);
+  --glow: rgba(196,167,231,0.1);
+}
+
+/* ── Rose Pine Light ── */
+[data-theme="rosepine-light"] {
+  --bg: #faf4ed;
+  --bg-subtle: #fffaf3;
+  --surface: #f2e9e1;
+  --surface-hover: #e8dfd7;
+  --overlay: #9893a5;
+  --text: #575279;
+  --text-muted: #797593;
+  --text-faint: #9893a5;
+  --primary: #907aa9;
+  --primary-hover: #7962a1;
+  --primary-muted: rgba(144,122,169,0.12);
+  --success: #31748f;
+  --success-muted: rgba(49,116,143,0.12);
+  --error: #b4637a;
+  --error-muted: rgba(180,99,122,0.12);
+  --info: #56949f;
+  --info-muted: rgba(86,148,159,0.12);
+  --warning: #ea9d34;
+  --warning-muted: rgba(234,157,52,0.12);
+  --glow: rgba(144,122,169,0.1);
+}
+
+/* ── Tokyo Night Dark ── */
+[data-theme="tokyo-dark"] {
+  --bg: #1a1b26;
+  --bg-subtle: #16161e;
+  --surface: #24283b;
+  --surface-hover: #414868;
+  --overlay: #565f89;
+  --text: #c0caf5;
+  --text-muted: #a9b1d6;
+  --text-faint: #565f89;
+  --primary: #bb9af7;
+  --primary-hover: #c0caf5;
+  --primary-muted: rgba(187,154,247,0.12);
+  --success: #9ece6a;
+  --success-muted: rgba(158,206,106,0.12);
+  --error: #f7768e;
+  --error-muted: rgba(247,118,142,0.12);
+  --info: #7dcfff;
+  --info-muted: rgba(125,207,255,0.12);
+  --warning: #e0af68;
+  --warning-muted: rgba(224,175,104,0.12);
+  --glow: rgba(187,154,247,0.1);
+}
+
+/* ── Tokyo Night Light ── */
+[data-theme="tokyo-light"] {
+  --bg: #e1e2e7;
+  --bg-subtle: #d5d6db;
+  --surface: #c4c8da;
+  --surface-hover: #b4b8cb;
+  --overlay: #848cb5;
+  --text: #3760bf;
+  --text-muted: #6172b0;
+  --text-faint: #848cb5;
+  --primary: #8459de;
+  --primary-hover: #5a4fcf;
+  --primary-muted: rgba(132,89,222,0.12);
+  --success: #33635c;
+  --success-muted: rgba(51,99,92,0.12);
+  --error: #8c4351;
+  --error-muted: rgba(140,67,81,0.12);
+  --info: #0f4b6e;
+  --info-muted: rgba(15,75,110,0.12);
+  --warning: #8f5e15;
+  --warning-muted: rgba(143,94,21,0.12);
+  --glow: rgba(132,89,222,0.1);
+}

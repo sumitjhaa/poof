@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
-import KeepAlive from "@/components/KeepAlive";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Poof - One-Time Secret Sharing",
@@ -13,10 +13,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <KeepAlive />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

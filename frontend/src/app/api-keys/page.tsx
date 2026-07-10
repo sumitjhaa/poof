@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Spinner } from '@/components';
-import styles from './page.module.css';
+import { Card, Spinner } from '@/components';
+import { useToast } from '@/components/Toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -16,6 +16,7 @@ interface APIKey {
 }
 
 export default function APIKeysPage() {
+  const { addToast } = useToast();
   const [keys, setKeys] = useState<APIKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -28,12 +29,12 @@ export default function APIKeysPage() {
       const res = await fetch(`${API_URL}/api/keys/`);
       const data = await res.json();
       setKeys(data.keys || []);
-    } catch (err) {
-      console.error('Failed to fetch keys:', err);
+    } catch {
+      addToast('error', 'Failed to load API keys');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     fetchKeys();
@@ -54,8 +55,9 @@ export default function APIKeysPage() {
       setNewKey(data.key);
       setName('');
       fetchKeys();
-    } catch (err) {
-      console.error('Failed to create key:', err);
+      addToast('success', 'API key created');
+    } catch {
+      addToast('error', 'Failed to create API key');
     } finally {
       setCreating(false);
     }
@@ -63,38 +65,31 @@ export default function APIKeysPage() {
 
   const handleRevoke = async (keyId: string) => {
     try {
-      await fetch(`${API_URL}/api/keys/${keyId}`, {
-        method: 'DELETE',
-      });
+      await fetch(`${API_URL}/api/keys/${keyId}`, { method: 'DELETE' });
       fetchKeys();
-    } catch (err) {
-      console.error('Failed to revoke key:', err);
+      addToast('success', 'API key revoked');
+    } catch {
+      addToast('error', 'Failed to revoke API key');
     }
   };
 
   const copyKey = () => {
-    if (newKey) {
-      navigator.clipboard.writeText(newKey);
-    }
+    if (newKey) navigator.clipboard.writeText(newKey);
   };
 
   if (newKey) {
     return (
-      <div className={styles.container}>
+      <div className="app">
         <Card>
-          <h2 className={styles.title}>API Key Created!</h2>
-          <div className={styles.newKey}>
-            <p className={styles.label}>Your API Key:</p>
-            <code className={styles.key}>{newKey}</code>
+          <h2 className="section-title" style={{ textAlign: 'center' }}>API Key Created</h2>
+          <div className="new-key-display">
+            <p className="label">Your API Key</p>
+            <code>{newKey}</code>
           </div>
-          <p className={styles.warning}>
-            Copy this key now - it will not be shown again!
-          </p>
-          <div className={styles.actions}>
-            <Button onClick={copyKey}>Copy Key</Button>
-            <Button variant="secondary" onClick={() => setNewKey(null)}>
-              Done
-            </Button>
+          <p className="warning-text">Copy this key now — it will not be shown again</p>
+          <div className="actions">
+            <button className="btn btn-primary" onClick={copyKey}>Copy Key</button>
+            <button className="btn btn-secondary" onClick={() => setNewKey(null)}>Done</button>
           </div>
         </Card>
       </div>
@@ -102,66 +97,70 @@ export default function APIKeysPage() {
   }
 
   return (
-    <div className={styles.container}>
+    <div className="app">
       <Card>
-        <h2 className={styles.title}>API Keys</h2>
-        <p className={styles.subtitle}>Manage API keys for third-party integration</p>
+        <h2 className="section-title">API Keys</h2>
+        <p className="subtitle" style={{ marginBottom: '1.5rem' }}>
+          Manage API keys for third-party integration
+        </p>
 
-        <div className={styles.createForm}>
-          <div className={styles.formRow}>
+        <div className="form-group">
+          <div className="input-group">
             <input
+              className="input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Key name"
-              className={styles.input}
             />
             <select
+              className="select"
+              style={{ width: 'auto', minWidth: '8rem' }}
               value={rateLimit}
               onChange={(e) => setRateLimit(Number(e.target.value))}
-              className={styles.select}
             >
-              <option value={10}>10 req/hour</option>
-              <option value={50}>50 req/hour</option>
-              <option value={100}>100 req/hour</option>
-              <option value={500}>500 req/hour</option>
+              <option value={10}>10/hr</option>
+              <option value={50}>50/hr</option>
+              <option value={100}>100/hr</option>
+              <option value={500}>500/hr</option>
             </select>
-            <Button onClick={handleCreate} disabled={!name.trim() || creating}>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ width: 'auto', flexShrink: 0 }}
+              onClick={handleCreate}
+              disabled={!name.trim() || creating}
+            >
               {creating ? <Spinner /> : 'Create'}
-            </Button>
+            </button>
           </div>
         </div>
 
+        <div className="divider" />
+
         {loading ? (
-          <div className={styles.loading}>
-            <Spinner />
-          </div>
+          <div className="loading"><Spinner /></div>
         ) : keys.length === 0 ? (
-          <p className={styles.empty}>No API keys yet</p>
+          <div className="empty">No API keys yet</div>
         ) : (
-          <div className={styles.keyList}>
+          <div className="key-list">
             {keys.map((key) => (
-              <div key={key.id} className={styles.keyItem}>
-                <div className={styles.keyInfo}>
-                  <span className={styles.keyName}>{key.name}</span>
-                  <span className={styles.keyValue}>{key.key}</span>
-                  <span className={styles.keyRate}>{key.rate_limit} req/hour</span>
+              <div key={key.id} className="key-item">
+                <div className="key-info">
+                  <span className="key-name">{key.name}</span>
+                  <span className="key-value">{key.key}</span>
+                  <span className="key-meta">{key.rate_limit} req/hour</span>
                 </div>
-                <div className={styles.keyActions}>
-                  <span
-                    className={`${styles.status} ${
-                      key.is_active ? styles.active : styles.inactive
-                    }`}
-                  >
+                <div className="key-actions">
+                  <span className={`badge ${key.is_active ? 'badge-success' : 'badge-error'}`}>
                     {key.is_active ? 'Active' : 'Revoked'}
                   </span>
                   {key.is_active && (
-                    <Button
-                      variant="secondary"
+                    <button
+                      className="btn btn-ghost btn-sm"
                       onClick={() => handleRevoke(key.id)}
                     >
                       Revoke
-                    </Button>
+                    </button>
                   )}
                 </div>
               </div>

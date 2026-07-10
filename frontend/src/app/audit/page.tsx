@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Spinner } from '@/components';
-import styles from './page.module.css';
+import { Card, Spinner } from '@/components';
+import { useToast } from '@/components/Toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -16,7 +16,25 @@ interface AuditEntry {
   ip_address: string | null;
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  'secret.created': 'Created',
+  'secret.read': 'Read',
+  'secret.deleted': 'Deleted',
+  'secret.expired': 'Expired',
+  'file.uploaded': 'Uploaded',
+  'file.downloaded': 'Downloaded',
+  'apikey.created': 'Key Created',
+  'apikey.revoked': 'Key Revoked',
+};
+
+function getEventBadge(event: string) {
+  if (event.includes('created') || event.includes('uploaded')) return 'badge-success';
+  if (event.includes('read') || event.includes('downloaded')) return 'badge-info';
+  return 'badge-error';
+}
+
 export default function AuditPage() {
+  const { addToast } = useToast();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{ total: number; byEvent: Record<string, number> } | null>(null);
@@ -27,25 +45,22 @@ export default function AuditPage() {
       const res = await fetch(`${API_URL}/api/audit/?limit=100`);
       const data = await res.json();
       setEntries(data.entries || []);
-    } catch (err) {
-      console.error('Failed to fetch audit entries:', err);
+    } catch {
+      addToast('error', 'Failed to load audit entries');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/audit/stats`);
       const data = await res.json();
-      setStats({
-        total: data.total_events,
-        byEvent: data.by_event,
-      });
-    } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      setStats({ total: data.total_events, byEvent: data.by_event });
+    } catch {
+      addToast('error', 'Failed to load stats');
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     fetchEntries();
@@ -63,108 +78,80 @@ export default function AuditPage() {
       a.download = `audit-logs.${format}`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Failed to export:', err);
+    } catch {
+      addToast('error', 'Failed to export logs');
     }
   };
 
-  const getEventLabel = (event: string) => {
-    const labels: Record<string, string> = {
-      'secret.created': 'Secret Created',
-      'secret.read': 'Secret Read',
-      'secret.deleted': 'Secret Deleted',
-      'secret.expired': 'Secret Expired',
-      'file.uploaded': 'File Uploaded',
-      'file.downloaded': 'File Downloaded',
-      'apikey.created': 'API Key Created',
-      'apikey.revoked': 'API Key Revoked',
-    };
-    return labels[event] || event;
-  };
-
-  const getEventColor = (event: string) => {
-    if (event.includes('created') || event.includes('uploaded')) return '#10b981';
-    if (event.includes('read') || event.includes('downloaded')) return '#3b82f6';
-    if (event.includes('deleted') || event.includes('expired') || event.includes('revoked')) return '#ef4444';
-    return '#6b7280';
-  };
-
   const filteredEntries = filter
-    ? entries.filter(e => e.event.includes(filter) || e.resource_type.includes(filter))
+    ? entries.filter((e) => e.event.includes(filter) || e.resource_type.includes(filter))
     : entries;
 
   return (
-    <div className={styles.container}>
+    <div className="app">
       <Card>
-        <div className={styles.header}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
           <div>
-            <h2 className={styles.title}>Audit Log</h2>
-            <p className={styles.subtitle}>Track secret lifecycle and activity</p>
+            <h2 className="section-title">Audit Log</h2>
+            <p className="subtitle">Track secret lifecycle and activity</p>
           </div>
-          <div className={styles.exportButtons}>
-            <Button variant="secondary" onClick={() => exportLogs('json')}>
-              Export JSON
-            </Button>
-            <Button variant="secondary" onClick={() => exportLogs('csv')}>
-              Export CSV
-            </Button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => exportLogs('json')}>JSON</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => exportLogs('csv')}>CSV</button>
           </div>
         </div>
 
         {stats && (
-          <div className={styles.stats}>
-            <div className={styles.statItem}>
-              <span className={styles.statValue}>{stats.total}</span>
-              <span className={styles.statLabel}>Total Events</span>
+          <div className="stats">
+            <div className="stat">
+              <div className="stat-value">{stats.total}</div>
+              <div className="stat-label">Total</div>
             </div>
             {Object.entries(stats.byEvent).slice(0, 4).map(([event, count]) => (
-              <div key={event} className={styles.statItem}>
-                <span className={styles.statValue}>{count}</span>
-                <span className={styles.statLabel}>{getEventLabel(event)}</span>
+              <div key={event} className="stat">
+                <div className="stat-value">{count}</div>
+                <div className="stat-label">{EVENT_LABELS[event] || event}</div>
               </div>
             ))}
           </div>
         )}
 
-        <div className={styles.filter}>
+        <div className="filter">
           <input
+            className="input"
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by event or type..."
-            className={styles.filterInput}
           />
         </div>
 
         {loading ? (
-          <div className={styles.loading}>
-            <Spinner />
-          </div>
+          <div className="loading"><Spinner /></div>
         ) : filteredEntries.length === 0 ? (
-          <p className={styles.empty}>No audit entries found</p>
+          <div className="empty">No audit entries found</div>
         ) : (
-          <div className={styles.table}>
-            <div className={styles.tableHeader}>
-              <span>Timestamp</span>
+          <div>
+            <div className="table-header">
+              <span>Time</span>
               <span>Event</span>
               <span>Resource</span>
               <span>ID</span>
               <span>IP</span>
             </div>
             {filteredEntries.map((entry) => (
-              <div key={entry.id} className={styles.tableRow}>
-                <span className={styles.timestamp}>
+              <div key={entry.id} className="table-row">
+                <span className="table-cell-mono">
                   {new Date(entry.timestamp).toLocaleString()}
                 </span>
-                <span
-                  className={styles.eventBadge}
-                  style={{ backgroundColor: getEventColor(entry.event) + '20', color: getEventColor(entry.event) }}
-                >
-                  {getEventLabel(entry.event)}
+                <span>
+                  <span className={`badge ${getEventBadge(entry.event)}`}>
+                    {EVENT_LABELS[entry.event] || entry.event}
+                  </span>
                 </span>
-                <span>{entry.resource_type}</span>
-                <span className={styles.resourceId}>{entry.resource_id.slice(0, 8)}...</span>
-                <span className={styles.ip}>{entry.ip_address || '-'}</span>
+                <span className="table-cell">{entry.resource_type}</span>
+                <span className="table-cell-mono">{entry.resource_id.slice(0, 8)}...</span>
+                <span className="table-cell-mono">{entry.ip_address || '—'}</span>
               </div>
             ))}
           </div>

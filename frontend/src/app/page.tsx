@@ -1,31 +1,33 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { generateKey, encrypt, encodeKey, hashPassword } from "@/utils/crypto";
-import { createSecret } from "@/utils/api";
-import { Card, Button, Textarea, Select, Header, Footer, CopyButton } from "@/components";
+import { useState } from 'react';
+import { generateKey, encrypt, encodeKey, hashPassword } from '@/utils/crypto';
+import { createSecret } from '@/utils/api';
+import { Card, Spinner, Header, Footer, CopyButton } from '@/components';
+import { useToast } from '@/components/Toast';
 
 const EXPIRY_OPTIONS = [
-  { value: 300, label: "5 minutes" },
-  { value: 3600, label: "1 hour" },
-  { value: 86400, label: "1 day" },
-  { value: 604800, label: "7 days" },
+  { value: 300, label: '5 minutes' },
+  { value: 3600, label: '1 hour' },
+  { value: 86400, label: '1 day' },
+  { value: 604800, label: '7 days' },
 ];
 
 const VIEW_OPTIONS = [
-  { value: 1, label: "1 view" },
-  { value: 3, label: "3 views" },
-  { value: 5, label: "5 views" },
-  { value: 10, label: "10 views" },
+  { value: 1, label: '1 view' },
+  { value: 3, label: '3 views' },
+  { value: 5, label: '5 views' },
+  { value: 10, label: '10 views' },
 ];
 
 export default function Home() {
-  const [secret, setSecret] = useState("");
+  const { addToast } = useToast();
+  const [secret, setSecret] = useState('');
   const [expiresIn, setExpiresIn] = useState(3600);
   const [maxViews, setMaxViews] = useState(1);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
   const [usePassword, setUsePassword] = useState(false);
-  const [webhook, setWebhook] = useState("");
+  const [webhook, setWebhook] = useState('');
   const [useWebhook, setUseWebhook] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ url: string } | null>(null);
@@ -59,8 +61,9 @@ export default function Home() {
       const fullUrl = `${window.location.origin}/s/${response.id}#key=${keyEncoded}`;
 
       setResult({ url: fullUrl });
+      addToast('success', 'Secret created successfully');
     } catch {
-      alert("Failed to create secret");
+      addToast('error', 'Failed to create secret');
     } finally {
       setLoading(false);
     }
@@ -68,71 +71,92 @@ export default function Home() {
 
   if (result) {
     return (
-      <div className="container">
+      <div className="app">
         <Header />
         <Card>
-          <div className="success-icon">
+          <div className="icon icon-success">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 style={{ textAlign: "center", marginBottom: "0.5rem" }}>Secret Created!</h2>
-          <p style={{ textAlign: "center", color: "var(--color-text-secondary)", marginBottom: "1.5rem" }}>
+          <h2 className="section-title" style={{ textAlign: 'center' }}>Secret Created</h2>
+          <p className="subtitle" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             Share this link before it expires
           </p>
           <div className="secret-box">
-            <p>Your secure link:</p>
+            <p className="label">Your secure link</p>
             <pre>{result.url}</pre>
           </div>
           <CopyButton text={result.url} />
-          <Button variant="secondary" onClick={() => { setResult(null); setSecret(""); }}>
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: '0.75rem' }}
+            onClick={() => { setResult(null); setSecret(''); }}
+          >
             Create Another
-          </Button>
+          </button>
         </Card>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="container">
+    <div className="app">
       <Header />
       <Card>
-        <h2 style={{ marginBottom: "1rem" }}>Create a Secret</h2>
-        <Textarea
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-          placeholder="Enter your secret..."
-        />
+        <h2 className="section-title">Create a Secret</h2>
+        <div className="form-group">
+          <textarea
+            className="textarea"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            placeholder="Enter your secret..."
+          />
+        </div>
+
         <div className="form-row">
           <div className="form-group">
-            <label>Expires in</label>
-            <Select
-              options={EXPIRY_OPTIONS}
+            <label className="label">Expires in</label>
+            <select
+              className="select"
               value={expiresIn}
               onChange={(e) => setExpiresIn(Number(e.target.value))}
-            />
+            >
+              {EXPIRY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
-            <label>Max views</label>
-            <Select
-              options={VIEW_OPTIONS}
+            <label className="label">Max views</label>
+            <select
+              className="select"
               value={maxViews}
               onChange={(e) => setMaxViews(Number(e.target.value))}
-            />
+            >
+              {VIEW_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="checkbox-group">
-          <input
-            type="checkbox"
-            id="usePassword"
-            checked={usePassword}
-            onChange={(e) => setUsePassword(e.target.checked)}
-          />
-          <label htmlFor="usePassword">Password protect this secret</label>
+
+        <div className="form-group">
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={usePassword}
+              onChange={(e) => setUsePassword(e.target.checked)}
+            />
+            <span>Password protect</span>
+          </label>
         </div>
+
         {usePassword && (
           <div className="form-group">
             <input
+              className="input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -140,18 +164,22 @@ export default function Home() {
             />
           </div>
         )}
-        <div className="checkbox-group">
-          <input
-            type="checkbox"
-            id="useWebhook"
-            checked={useWebhook}
-            onChange={(e) => setUseWebhook(e.target.checked)}
-          />
-          <label htmlFor="useWebhook">Notify on expiration</label>
+
+        <div className="form-group">
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={useWebhook}
+              onChange={(e) => setUseWebhook(e.target.checked)}
+            />
+            <span>Notify on expiration</span>
+          </label>
         </div>
+
         {useWebhook && (
           <div className="form-group">
             <input
+              className="input"
               type="url"
               value={webhook}
               onChange={(e) => setWebhook(e.target.value)}
@@ -159,9 +187,14 @@ export default function Home() {
             />
           </div>
         )}
-        <Button onClick={handleCreate} disabled={!secret.trim() || loading} loading={loading}>
-          Create Secret
-        </Button>
+
+        <button
+          className="btn btn-primary"
+          onClick={handleCreate}
+          disabled={!secret.trim() || loading}
+        >
+          {loading ? <Spinner /> : 'Create Secret'}
+        </button>
       </Card>
       <Footer />
     </div>
