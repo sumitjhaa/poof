@@ -6,3 +6,5 @@ httpx==0.28.0
 cryptography==44.0.0
 pytest==8.3.3
 slowapi==0.1.9
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36

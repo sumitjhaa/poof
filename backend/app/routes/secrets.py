@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/secrets", tags=["secrets"])
 @limiter.limit("10/minute")
 async def create_secret(request: Request, data: SecretCreate):
     id = str(uuid4())
-    secret = storage.create(
+    secret = await storage.create(
         id=id,
         encrypted_data=data.encrypted_data,
         expires_in=data.expires_in,
@@ -30,7 +30,7 @@ async def create_secret(request: Request, data: SecretCreate):
 @router.get("/{id}", response_model=SecretRead, responses={404: {"model": ErrorResponse}, 410: {"model": ErrorResponse}})
 @limiter.limit("30/minute")
 async def read_secret(request: Request, id: str):
-    secret = storage.get(id)
+    secret = await storage.get(id)
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found or expired"})
 
@@ -40,7 +40,7 @@ async def read_secret(request: Request, id: str):
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "Secret has been consumed"})
 
     # Increment view count
-    storage.increment_view(id)
+    await storage.increment_view(id)
 
     return SecretRead(
         id=id,
@@ -53,6 +53,6 @@ async def read_secret(request: Request, id: str):
 
 @router.delete("/{id}", status_code=204)
 async def delete_secret(id: str):
-    if not storage.delete(id):
+    if not await storage.delete(id):
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found"})
     return None

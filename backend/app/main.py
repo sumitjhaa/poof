@@ -28,6 +28,11 @@ async def cleanup_loop():
 async def lifespan(app: FastAPI):
     import asyncio
     global cleanup_task
+
+    # Initialize database
+    from app.storage import storage
+    await storage.init()
+
     cleanup_task = asyncio.create_task(cleanup_loop())
     yield
     cleanup_task.cancel()

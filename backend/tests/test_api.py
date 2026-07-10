@@ -10,9 +10,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clear_storage():
-    storage.secrets.clear()
+    storage.in_memory.clear()
     yield
-    storage.secrets.clear()
+    storage.in_memory.clear()
 
 
 def test_create_secret():

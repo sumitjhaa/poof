@@ -1,61 +1,145 @@
 from datetime import datetime, timezone
-from uuid import UUID
+from sqlalchemy import select, update, delete
+
+from app.database import get_session, Secret
 
 
-class InMemoryStorage:
+class PostgresStorage:
     def __init__(self):
-        self.secrets: dict[str, dict] = {}
+        self.use_db = False
+        self.in_memory = {}
 
-    def create(self, id: str, encrypted_data: str, expires_in: int, max_views: int) -> dict:
+    async def init(self):
+        from app.database import init_db
+        self.use_db = await init_db()
+
+    async def create(self, id: str, encrypted_data: str, expires_in: int, max_views: int) -> dict:
         now = datetime.now(timezone.utc)
-        secret = {
+        expires_at = datetime.fromtimestamp(now.timestamp() + expires_in, tz=timezone.utc)
+
+        if self.use_db:
+            session = await get_session()
+            async with session:
+                secret = Secret(
+                    id=id,
+                    encrypted_data=encrypted_data,
+                    created_at=now,
+                    expires_at=expires_at,
+                    max_views=max_views,
+                )
+                session.add(secret)
+                await session.commit()
+        else:
+            self.in_memory[id] = {
+                "id": id,
+                "encrypted_data": encrypted_data,
+                "created_at": now,
+                "expires_at": expires_at,
+                "max_views": max_views,
+                "views_count": 0,
+                "is_deleted": False,
+            }
+            return self.in_memory[id]
+
+        return {
             "id": id,
             "encrypted_data": encrypted_data,
             "created_at": now,
-            "expires_at": datetime.fromtimestamp(now.timestamp() + expires_in, tz=timezone.utc),
+            "expires_at": expires_at,
             "max_views": max_views,
             "views_count": 0,
             "is_deleted": False,
         }
-        self.secrets[id] = secret
-        return secret
 
-    def get(self, id: str) -> dict | None:
-        secret = self.secrets.get(id)
-        if not secret:
-            return None
-        if secret["is_deleted"]:
-            return None
-        if datetime.now(timezone.utc) > secret["expires_at"]:
-            self.delete(id)
-            return None
-        return secret
+    async def get(self, id: str) -> dict | None:
+        if not self.use_db:
+            secret = self.in_memory.get(id)
+            if not secret or secret["is_deleted"]:
+                return None
+            if datetime.now(timezone.utc) > secret["expires_at"]:
+                await self.delete(id)
+                return None
+            return secret
 
-    def increment_view(self, id: str) -> dict | None:
-        secret = self.get(id)
-        if not secret:
-            return None
-        secret["views_count"] += 1
-        if secret["views_count"] >= secret["max_views"]:
-            self.delete(id)
-        return secret
+        session = await get_session()
+        async with session:
+            result = await session.execute(
+                select(Secret).where(Secret.id == id, Secret.is_deleted == False)
+            )
+            secret = result.scalar_one_or_none()
 
-    def delete(self, id: str) -> bool:
-        if id in self.secrets:
-            self.secrets[id]["is_deleted"] = True
-            self.secrets[id]["deleted_at"] = datetime.now(timezone.utc)
-            return True
-        return False
+            if not secret:
+                return None
 
-    def cleanup_expired(self) -> int:
-        now = datetime.now(timezone.utc)
-        expired = [
-            id for id, s in self.secrets.items()
-            if not s["is_deleted"] and now > s["expires_at"]
-        ]
-        for id in expired:
-            self.delete(id)
-        return len(expired)
+            if datetime.now(timezone.utc) > secret.expires_at:
+                await self.delete(id)
+                return None
+
+            return {
+                "id": secret.id,
+                "encrypted_data": secret.encrypted_data,
+                "created_at": secret.created_at,
+                "expires_at": secret.expires_at,
+                "max_views": secret.max_views,
+                "views_count": secret.views_count,
+                "is_deleted": secret.is_deleted,
+            }
+
+    async def increment_view(self, id: str) -> dict | None:
+        if not self.use_db:
+            secret = self.in_memory.get(id)
+            if not secret or secret["is_deleted"]:
+                return None
+            secret["views_count"] += 1
+            if secret["views_count"] >= secret["max_views"]:
+                secret["is_deleted"] = True
+                secret["deleted_at"] = datetime.now(timezone.utc)
+            return secret
+
+        session = await get_session()
+        async with session:
+            result = await session.execute(
+                select(Secret).where(Secret.id == id, Secret.is_deleted == False)
+            )
+            secret = result.scalar_one_or_none()
+
+            if not secret:
+                return None
+
+            secret.views_count += 1
+            if secret.views_count >= secret.max_views:
+                secret.is_deleted = True
+                secret.deleted_at = datetime.now(timezone.utc)
+
+            await session.commit()
+
+            return {
+                "id": secret.id,
+                "encrypted_data": secret.encrypted_data,
+                "created_at": secret.created_at,
+                "expires_at": secret.expires_at,
+                "max_views": secret.max_views,
+                "views_count": secret.views_count,
+                "is_deleted": secret.is_deleted,
+            }
+
+    async def delete(self, id: str) -> bool:
+        if not self.use_db:
+            if id in self.in_memory:
+                self.in_memory[id]["is_deleted"] = True
+                self.in_memory[id]["deleted_at"] = datetime.now(timezone.utc)
+                return True
+            return False
+
+        session = await get_session()
+        async with session:
+            result = await session.execute(
+                update(Secret)
+                .where(Secret.id == id)
+                .values(is_deleted=True, deleted_at=datetime.now(timezone.utc))
+            )
+            await session.commit()
+            return result.rowcount > 0
 
 
-storage = InMemoryStorage()
+storage = PostgresStorage()
