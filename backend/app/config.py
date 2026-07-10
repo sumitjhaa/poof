@@ -1,6 +1,6 @@
 import json
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
@@ -8,20 +8,17 @@ class Settings(BaseSettings):
 
     app_name: str = "Poof"
     debug: bool = False
-    allowed_origins: list[str] = ["http://localhost:3000"]
+    allowed_origins_raw: str = "http://localhost:3000"
 
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_origins(cls, v):
-        if isinstance(v, str):
-            try:
-                parsed = json.loads(v)
-                if isinstance(parsed, list):
-                    return parsed
-            except json.JSONDecodeError:
-                pass
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    @property
+    def allowed_origins(self) -> list[str]:
+        try:
+            parsed = json.loads(self.allowed_origins_raw)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return [o.strip() for o in self.allowed_origins_raw.split(",") if o.strip()]
 
 
 settings = Settings()
