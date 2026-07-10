@@ -1,0 +1,2 @@
+[console_scripts]
+poof = poof.main:cli

@@ -1,0 +1,10 @@
+setup.py
+poof/__init__.py
+poof/crypto.py
+poof/main.py
+poof_cli.egg-info/PKG-INFO
+poof_cli.egg-info/SOURCES.txt
+poof_cli.egg-info/dependency_links.txt
+poof_cli.egg-info/entry_points.txt
+poof_cli.egg-info/requires.txt
+poof_cli.egg-info/top_level.txt
