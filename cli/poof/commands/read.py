@@ -20,27 +20,31 @@ def read(url: str):
 
     key = decode_key(key_b64)
 
-    password = None
+    # First request to check if password is required
     try:
         resp = httpx.get(f"{API_URL}/api/secrets/{secret_id}", timeout=10)
-        if resp.status_code == 403:
-            password = click.prompt("Enter password", hide_input=True)
-        elif resp.status_code == 404:
-            click.echo("Error: Secret not found or already consumed", err=True)
-            sys.exit(1)
-    except httpx.RequestError as e:
-        click.echo(f"Error connecting to server: {e}", err=True)
-        sys.exit(1)
-
-    try:
-        params = {"password": password} if password else {}
-        resp = httpx.get(f"{API_URL}/api/secrets/{secret_id}", params=params, timeout=10)
-        if resp.status_code == 403:
-            click.echo("Error: Incorrect password", err=True)
-            sys.exit(1)
+        
         if resp.status_code == 404:
             click.echo("Error: Secret not found or already consumed", err=True)
             sys.exit(1)
+        
+        if resp.status_code == 403:
+            # Password required, prompt user
+            password = click.prompt("Enter password", hide_input=True)
+            resp = httpx.get(
+                f"{API_URL}/api/secrets/{secret_id}",
+                params={"password": password},
+                timeout=10
+            )
+            
+            if resp.status_code == 403:
+                click.echo("Error: Incorrect password", err=True)
+                sys.exit(1)
+            
+            if resp.status_code == 404:
+                click.echo("Error: Secret not found or already consumed", err=True)
+                sys.exit(1)
+        
         resp.raise_for_status()
     except httpx.RequestError as e:
         click.echo(f"Error connecting to server: {e}", err=True)

@@ -15,22 +15,27 @@ async def read_secret(request: Request, id: str, password: str = None):
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found or expired"})
 
-    if secret.get("password_hash"):
-        if not password:
-            raise HTTPException(
-                status_code=403,
-                detail={"error": "password_required", "message": "Password is required to access this secret"}
-            )
+    # Check if password is required but not provided
+    if secret.get("password_hash") and not password:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "password_required", "message": "Password is required to access this secret"}
+        )
+
+    # Verify password if provided
+    if password:
         if not verify_password(password, secret["password_hash"], secret["password_salt"]):
             raise HTTPException(
                 status_code=403,
                 detail={"error": "invalid_password", "message": "Incorrect password"}
             )
 
+    # Check views remaining
     views_remaining = secret["max_views"] - secret["views_count"]
     if views_remaining <= 0:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "Secret has been consumed"})
 
+    # Increment view count
     await storage.increment_view(id)
 
     return SecretRead(
