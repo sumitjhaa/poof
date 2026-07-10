@@ -3,7 +3,7 @@ import click
 import httpx
 from pathlib import Path
 
-API_URL = "http://localhost:8000"
+from poof.config import API_URL
 
 
 @click.command()

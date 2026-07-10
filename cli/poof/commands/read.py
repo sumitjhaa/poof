@@ -2,10 +2,9 @@ import sys
 import click
 import httpx
 
+from poof.config import API_URL
 from poof.crypto import decode_key, decrypt
 from poof.utils import parse_url
-
-API_URL = "http://localhost:8000"
 
 
 @click.command()

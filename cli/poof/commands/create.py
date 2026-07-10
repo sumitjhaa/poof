@@ -2,11 +2,10 @@ import sys
 import click
 import httpx
 
+from poof.config import API_URL
 from poof.crypto import generate_key, encrypt, encode_key
 from poof.auth import hash_password
 from poof.utils import parse_expiry
-
-API_URL = "http://localhost:8000"
 
 
 @click.command()

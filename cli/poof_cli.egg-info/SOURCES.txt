@@ -3,7 +3,10 @@ poof/__init__.py
 poof/auth.py
 poof/main.py
 poof/commands/__init__.py
+poof/commands/apikeys.py
+poof/commands/audit.py
 poof/commands/create.py
+poof/commands/files.py
 poof/commands/read.py
 poof/crypto/__init__.py
 poof/crypto/decrypt.py
