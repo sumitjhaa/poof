@@ -1,33 +1,11 @@
-from uuid import uuid4
-
 from fastapi import APIRouter, HTTPException, Request
 
-from app.models import SecretCreate, SecretResponse, SecretRead, ErrorResponse
+from app.models import SecretRead, ErrorResponse
 from app.storage import storage
 from app.limiter import limiter
 from app.auth import verify_password
 
-router = APIRouter(prefix="/api/secrets", tags=["secrets"])
-
-
-@router.post("", response_model=SecretResponse, status_code=201)
-@limiter.limit("10/minute")
-async def create_secret(request: Request, data: SecretCreate):
-    id = str(uuid4())
-    secret = await storage.create(
-        id=id,
-        encrypted_data=data.encrypted_data,
-        expires_in=data.expires_in,
-        max_views=data.max_views,
-        password_hash=data.password_hash,
-        password_salt=data.password_salt,
-    )
-    return SecretResponse(
-        id=id,
-        created_at=secret["created_at"],
-        expires_at=secret["expires_at"],
-        url=f"/s/{id}",
-    )
+router = APIRouter()
 
 
 @router.get("/{id}", response_model=SecretRead, responses={404: {"model": ErrorResponse}, 410: {"model": ErrorResponse}})
@@ -37,7 +15,6 @@ async def read_secret(request: Request, id: str, password: str = None):
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found or expired"})
 
-    # Check password if required
     if secret.get("password_hash"):
         if not password:
             raise HTTPException(
@@ -50,12 +27,10 @@ async def read_secret(request: Request, id: str, password: str = None):
                 detail={"error": "invalid_password", "message": "Incorrect password"}
             )
 
-    # Check if this read will consume it
     views_remaining = secret["max_views"] - secret["views_count"]
     if views_remaining <= 0:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "Secret has been consumed"})
 
-    # Increment view count
     await storage.increment_view(id)
 
     return SecretRead(
@@ -66,10 +41,3 @@ async def read_secret(request: Request, id: str, password: str = None):
         views_remaining=views_remaining - 1,
         has_password=secret.get("password_hash") is not None,
     )
-
-
-@router.delete("/{id}", status_code=204)
-async def delete_secret(id: str):
-    if not await storage.delete(id):
-        raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found"})
-    return None

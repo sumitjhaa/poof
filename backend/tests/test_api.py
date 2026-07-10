@@ -10,9 +10,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clear_storage():
-    storage.in_memory.clear()
+    storage._memory.secrets.clear()
     yield
-    storage.in_memory.clear()
+    storage._memory.secrets.clear()
 
 
 def test_create_secret():
@@ -37,7 +37,6 @@ def test_read_secret():
     key = generate_key()
     encrypted = encrypt(key, "my-secret")
 
-    # Create
     create_resp = client.post("/api/secrets", json={
         "encrypted_data": encrypted,
         "expires_in": 3600,
@@ -45,12 +44,11 @@ def test_read_secret():
     })
     secret_id = create_resp.json()["id"]
 
-    # Read
     read_resp = client.get(f"/api/secrets/{secret_id}")
     assert read_resp.status_code == 200
     data = read_resp.json()
     assert data["encrypted_data"] == encrypted
-    assert data["views_remaining"] == 0  # Consumed after read
+    assert data["views_remaining"] == 0
 
 
 def test_read_consumes_secret():
@@ -63,10 +61,8 @@ def test_read_consumes_secret():
     })
     secret_id = create_resp.json()["id"]
 
-    # First read - success
     client.get(f"/api/secrets/{secret_id}")
 
-    # Second read - gone
     read_resp = client.get(f"/api/secrets/{secret_id}")
     assert read_resp.status_code == 404
 
@@ -81,17 +77,14 @@ def test_max_views():
     })
     secret_id = create_resp.json()["id"]
 
-    # First read
     resp1 = client.get(f"/api/secrets/{secret_id}")
     assert resp1.status_code == 200
     assert resp1.json()["views_remaining"] == 1
 
-    # Second read - consumed
     resp2 = client.get(f"/api/secrets/{secret_id}")
     assert resp2.status_code == 200
     assert resp2.json()["views_remaining"] == 0
 
-    # Third read - gone
     resp3 = client.get(f"/api/secrets/{secret_id}")
     assert resp3.status_code == 404
 
@@ -105,11 +98,9 @@ def test_delete_secret():
     })
     secret_id = create_resp.json()["id"]
 
-    # Delete
     del_resp = client.delete(f"/api/secrets/{secret_id}")
     assert del_resp.status_code == 204
 
-    # Read after delete - gone
     read_resp = client.get(f"/api/secrets/{secret_id}")
     assert read_resp.status_code == 404
 

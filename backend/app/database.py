@@ -25,6 +25,8 @@ class Secret(Base):
     views_count = Column(Integer, default=0)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    password_hash = Column(String(128), nullable=True)
+    password_salt = Column(String(32), nullable=True)
 
 
 engine = None

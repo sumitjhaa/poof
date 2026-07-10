@@ -1,15 +1,12 @@
-const KEY_LENGTH = 32;
-const IV_LENGTH = 12;
-
 export function generateKey(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(KEY_LENGTH));
+  return crypto.getRandomValues(new Uint8Array(32));
 }
 
 export async function encrypt(
   key: Uint8Array,
   plaintext: string
 ): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(plaintext);
 
   const cryptoKey = await crypto.subtle.importKey(
@@ -44,8 +41,8 @@ export async function decrypt(
   const binary = atob(padded);
   const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
 
-  const iv = bytes.slice(0, IV_LENGTH);
-  const ciphertext = bytes.slice(IV_LENGTH);
+  const iv = bytes.slice(0, 12);
+  const ciphertext = bytes.slice(12);
 
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
@@ -75,4 +72,34 @@ export function decodeKey(keyB64: string): Uint8Array {
   const padded = keyB64.replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(padded);
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+}
+
+export async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
+  );
+
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+
+  const hashArray = new Uint8Array(hashBuffer);
+  const hashHex = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  return { hash: hashHex, salt: saltHex };
 }

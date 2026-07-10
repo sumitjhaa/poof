@@ -7,7 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.routes.secrets import router as secrets_router
+from app.routes import router as secrets_router
 from app.storage import storage
 from app.limiter import limiter
 from app.security import SecurityHeadersMiddleware

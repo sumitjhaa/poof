@@ -1,45 +1,28 @@
 from datetime import datetime, timezone
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update
 
 from app.database import get_session, Secret
 
 
 class PostgresStorage:
-    def __init__(self):
-        self.use_db = False
-        self.in_memory = {}
-
-    async def init(self):
-        from app.database import init_db
-        self.use_db = await init_db()
-
-    async def create(self, id: str, encrypted_data: str, expires_in: int, max_views: int) -> dict:
+    async def create(self, id: str, encrypted_data: str, expires_in: int, max_views: int,
+                     password_hash: str = None, password_salt: str = None) -> dict:
         now = datetime.now(timezone.utc)
         expires_at = datetime.fromtimestamp(now.timestamp() + expires_in, tz=timezone.utc)
 
-        if self.use_db:
-            session = await get_session()
-            async with session:
-                secret = Secret(
-                    id=id,
-                    encrypted_data=encrypted_data,
-                    created_at=now,
-                    expires_at=expires_at,
-                    max_views=max_views,
-                )
-                session.add(secret)
-                await session.commit()
-        else:
-            self.in_memory[id] = {
-                "id": id,
-                "encrypted_data": encrypted_data,
-                "created_at": now,
-                "expires_at": expires_at,
-                "max_views": max_views,
-                "views_count": 0,
-                "is_deleted": False,
-            }
-            return self.in_memory[id]
+        session = await get_session()
+        async with session:
+            secret = Secret(
+                id=id,
+                encrypted_data=encrypted_data,
+                created_at=now,
+                expires_at=expires_at,
+                max_views=max_views,
+                password_hash=password_hash,
+                password_salt=password_salt,
+            )
+            session.add(secret)
+            await session.commit()
 
         return {
             "id": id,
@@ -49,18 +32,11 @@ class PostgresStorage:
             "max_views": max_views,
             "views_count": 0,
             "is_deleted": False,
+            "password_hash": password_hash,
+            "password_salt": password_salt,
         }
 
     async def get(self, id: str) -> dict | None:
-        if not self.use_db:
-            secret = self.in_memory.get(id)
-            if not secret or secret["is_deleted"]:
-                return None
-            if datetime.now(timezone.utc) > secret["expires_at"]:
-                await self.delete(id)
-                return None
-            return secret
-
         session = await get_session()
         async with session:
             result = await session.execute(
@@ -86,16 +62,6 @@ class PostgresStorage:
             }
 
     async def increment_view(self, id: str) -> dict | None:
-        if not self.use_db:
-            secret = self.in_memory.get(id)
-            if not secret or secret["is_deleted"]:
-                return None
-            secret["views_count"] += 1
-            if secret["views_count"] >= secret["max_views"]:
-                secret["is_deleted"] = True
-                secret["deleted_at"] = datetime.now(timezone.utc)
-            return secret
-
         session = await get_session()
         async with session:
             result = await session.execute(
@@ -124,13 +90,6 @@ class PostgresStorage:
             }
 
     async def delete(self, id: str) -> bool:
-        if not self.use_db:
-            if id in self.in_memory:
-                self.in_memory[id]["is_deleted"] = True
-                self.in_memory[id]["deleted_at"] = datetime.now(timezone.utc)
-                return True
-            return False
-
         session = await get_session()
         async with session:
             result = await session.execute(
@@ -141,5 +100,14 @@ class PostgresStorage:
             await session.commit()
             return result.rowcount > 0
 
-
-storage = PostgresStorage()
+    async def cleanup_expired(self) -> int:
+        session = await get_session()
+        async with session:
+            now = datetime.now(timezone.utc)
+            result = await session.execute(
+                select(Secret).where(Secret.is_deleted == False, Secret.expires_at < now)
+            )
+            expired = result.scalars().all()
+            for secret in expired:
+                await self.delete(secret.id)
+            return len(expired)

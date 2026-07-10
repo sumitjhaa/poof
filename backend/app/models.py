@@ -6,6 +6,8 @@ class SecretCreate(BaseModel):
     encrypted_data: str = Field(..., min_length=1, max_length=1048576)  # 1MB max
     expires_in: int = Field(default=3600, ge=60, le=2592000)  # 1 min to 30 days
     max_views: int = Field(default=1, ge=1, le=10)
+    password_hash: str | None = None  # Optional password protection
+    password_salt: str | None = None
 
 
 class SecretResponse(BaseModel):
@@ -21,6 +23,7 @@ class SecretRead(BaseModel):
     created_at: datetime
     expires_at: datetime
     views_remaining: int
+    has_password: bool = False
 
 
 class ErrorResponse(BaseModel):
