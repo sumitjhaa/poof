@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Poof</h1>
+      <p class="subtitle">Secure Secret Sharing</p>
+    </header>
+
+    <div id="create-view">
+      <div class="form-group">
+        <label for="secret">Secret</label>
+        <textarea id="secret" placeholder="Enter your secret..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="expires">Expires in</label>
+          <select id="expires">
+            <option value="300">5 minutes</option>
+            <option value="3600" selected>1 hour</option>
+            <option value="86400">1 day</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="views">Max views</label>
+          <select id="views">
+            <option value="1" selected>1</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="create-btn" class="btn btn-primary">Create Secret</button>
+    </div>
+
+    <div id="result-view" class="hidden">
+      <div class="success">✓ Secret Created</div>
+      <div class="link-box">
+        <input type="text" id="link" readonly>
+        <button id="copy-btn" class="btn btn-secondary">Copy</button>
+      </div>
+      <button id="new-btn" class="btn btn-secondary">Create Another</button>
+    </div>
+
+    <div id="read-view" class="hidden">
+      <div class="secret-display">
+        <p>Your secret:</p>
+        <pre id="decrypted"></pre>
+      </div>
+      <button id="copy-secret-btn" class="btn btn-secondary">Copy to Clipboard</button>
+    </div>
+
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+    </div>
+
+    <div id="error" class="hidden error"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
