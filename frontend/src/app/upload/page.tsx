@@ -40,15 +40,14 @@ export default function UploadPage() {
     return (
       <div className="app">
         <Card>
-          <h2 className="section-title" style={{ textAlign: 'center' }}>File Uploaded</h2>
+          <h2 className="section-title section-title-center">File Uploaded</h2>
           <div className="result-box">
             <p className="label">Share this link</p>
             <code>{result.url}</code>
           </div>
           <CopyButton text={result.url} />
           <button
-            className="btn btn-secondary"
-            style={{ marginTop: '0.75rem' }}
+            className="btn btn-secondary result-actions"
             onClick={() => setResult(null)}
           >
             Upload Another
@@ -62,17 +61,19 @@ export default function UploadPage() {
     <div className="app">
       <Card>
         <h2 className="section-title">Upload File</h2>
-        <p className="subtitle" style={{ marginBottom: '1.5rem' }}>
+        <p className="subtitle subtitle-block">
           Share files securely with end-to-end encryption
         </p>
 
         <div className="form-group">
           <label className="label">Select File</label>
-          <input
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="file-input"
-          />
+          <div className="file-dropzone">
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="file-input"
+            />
+          </div>
         </div>
 
         <div className="form-row">
@@ -104,13 +105,15 @@ export default function UploadPage() {
           </div>
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={handleUpload}
-          disabled={loading || !file}
-        >
-          {loading ? <Spinner /> : 'Upload File'}
-        </button>
+        <div className="form-actions-right">
+          <button
+            className="btn btn-primary"
+            onClick={handleUpload}
+            disabled={loading || !file}
+          >
+            {loading ? <Spinner /> : 'Upload File'}
+          </button>
+        </div>
       </Card>
     </div>
   );

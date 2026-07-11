@@ -3,18 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Spinner } from '@/components';
 import { useToast } from '@/components/Toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-interface AuditEntry {
-  id: string;
-  event: string;
-  resource_id: string;
-  resource_type: string;
-  timestamp: string;
-  metadata: Record<string, unknown> | null;
-  ip_address: string | null;
-}
+import { fetchAuditEntries, fetchAuditStats, exportAuditLogs, AuditEntry } from '@/utils/api';
 
 const EVENT_LABELS: Record<string, string> = {
   'secret.created': 'Created',
@@ -40,37 +29,28 @@ export default function AuditPage() {
   const [stats, setStats] = useState<{ total: number; byEvent: Record<string, number> } | null>(null);
   const [filter, setFilter] = useState('');
 
-  const fetchEntries = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/audit/?limit=100`);
-      const data = await res.json();
-      setEntries(data.entries || []);
+      const [entriesData, statsData] = await Promise.all([
+        fetchAuditEntries(),
+        fetchAuditStats(),
+      ]);
+      setEntries(entriesData);
+      setStats({ total: statsData.total_events, byEvent: statsData.by_event });
     } catch {
-      addToast('error', 'Failed to load audit entries');
+      addToast('error', 'Failed to load audit data');
     } finally {
       setLoading(false);
     }
   }, [addToast]);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/audit/stats`);
-      const data = await res.json();
-      setStats({ total: data.total_events, byEvent: data.by_event });
-    } catch {
-      addToast('error', 'Failed to load stats');
-    }
-  }, [addToast]);
-
   useEffect(() => {
-    fetchEntries();
-    fetchStats();
-  }, [fetchEntries, fetchStats]);
+    loadData();
+  }, [loadData]);
 
-  const exportLogs = async (format: 'json' | 'csv') => {
+  const handleExport = async (format: 'json' | 'csv') => {
     try {
-      const res = await fetch(`${API_URL}/api/audit/export?format=${format}`);
-      const text = await res.text();
+      const text = await exportAuditLogs(format);
       const blob = new Blob([text], { type: format === 'json' ? 'application/json' : 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -90,14 +70,14 @@ export default function AuditPage() {
   return (
     <div className="app">
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+        <div className="card-header">
           <div>
             <h2 className="section-title">Audit Log</h2>
             <p className="subtitle">Track secret lifecycle and activity</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => exportLogs('json')}>JSON</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => exportLogs('csv')}>CSV</button>
+          <div className="form-actions-right">
+            <button className="btn btn-secondary btn-sm" onClick={() => handleExport('json')}>JSON</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => handleExport('csv')}>CSV</button>
           </div>
         </div>
 

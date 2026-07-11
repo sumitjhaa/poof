@@ -3,32 +3,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Spinner } from '@/components';
 import { useToast } from '@/components/Toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-interface APIKey {
-  id: string;
-  key: string;
-  name: string;
-  created_at: string;
-  rate_limit: number;
-  is_active: boolean;
-}
+import { fetchAPIKeys, createAPIKey, revokeAPIKey, APIKeyItem } from '@/utils/api';
 
 export default function APIKeysPage() {
   const { addToast } = useToast();
-  const [keys, setKeys] = useState<APIKey[]>([]);
+  const [keys, setKeys] = useState<APIKeyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [rateLimit, setRateLimit] = useState(100);
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
 
-  const fetchKeys = useCallback(async () => {
+  const loadKeys = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/keys/`);
-      const data = await res.json();
-      setKeys(data.keys || []);
+      const data = await fetchAPIKeys();
+      setKeys(data);
     } catch {
       addToast('error', 'Failed to load API keys');
     } finally {
@@ -37,24 +26,18 @@ export default function APIKeysPage() {
   }, [addToast]);
 
   useEffect(() => {
-    fetchKeys();
-  }, [fetchKeys]);
+    loadKeys();
+  }, [loadKeys]);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
 
     setCreating(true);
     try {
-      const res = await fetch(`${API_URL}/api/keys/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, rate_limit: rateLimit }),
-      });
-
-      const data = await res.json();
+      const data = await createAPIKey(name, rateLimit);
       setNewKey(data.key);
       setName('');
-      fetchKeys();
+      loadKeys();
       addToast('success', 'API key created');
     } catch {
       addToast('error', 'Failed to create API key');
@@ -65,8 +48,8 @@ export default function APIKeysPage() {
 
   const handleRevoke = async (keyId: string) => {
     try {
-      await fetch(`${API_URL}/api/keys/${keyId}`, { method: 'DELETE' });
-      fetchKeys();
+      await revokeAPIKey(keyId);
+      loadKeys();
       addToast('success', 'API key revoked');
     } catch {
       addToast('error', 'Failed to revoke API key');
@@ -81,13 +64,13 @@ export default function APIKeysPage() {
     return (
       <div className="app">
         <Card>
-          <h2 className="section-title" style={{ textAlign: 'center' }}>API Key Created</h2>
+          <h2 className="section-title section-title-center">API Key Created</h2>
           <div className="new-key-display">
             <p className="label">Your API Key</p>
             <code>{newKey}</code>
           </div>
           <p className="warning-text">Copy this key now — it will not be shown again</p>
-          <div className="actions">
+          <div className="form-actions-right">
             <button className="btn btn-primary" onClick={copyKey}>Copy Key</button>
             <button className="btn btn-secondary" onClick={() => setNewKey(null)}>Done</button>
           </div>
@@ -100,7 +83,7 @@ export default function APIKeysPage() {
     <div className="app">
       <Card>
         <h2 className="section-title">API Keys</h2>
-        <p className="subtitle" style={{ marginBottom: '1.5rem' }}>
+        <p className="subtitle subtitle-block">
           Manage API keys for third-party integration
         </p>
 
@@ -114,8 +97,7 @@ export default function APIKeysPage() {
               placeholder="Key name"
             />
             <select
-              className="select"
-              style={{ width: 'auto', minWidth: '8rem' }}
+              className="select select-compact"
               value={rateLimit}
               onChange={(e) => setRateLimit(Number(e.target.value))}
             >
@@ -125,8 +107,7 @@ export default function APIKeysPage() {
               <option value={500}>500/hr</option>
             </select>
             <button
-              className="btn btn-primary btn-sm"
-              style={{ width: 'auto', flexShrink: 0 }}
+              className="btn btn-primary btn-sm btn-auto"
               onClick={handleCreate}
               disabled={!name.trim() || creating}
             >

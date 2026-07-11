@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { decodeKey, decrypt } from '@/utils/crypto';
 import { readSecret } from '@/utils/api';
-import { Card, Spinner, Icon, SecretDisplay, Header, CopyButton } from '@/components';
+import { API_URL } from '@/config';
+import { Card, Spinner, Icon, SecretDisplay, CopyButton } from '@/components';
 
 export default function ReadSecret() {
   const params = useParams();
@@ -51,6 +52,25 @@ export default function ReadSecret() {
     fetchSecret();
   }, [fetchSecret]);
 
+  // Mark as viewed when tab closes (not on page load/refresh)
+  useEffect(() => {
+    if (status !== 'success') return;
+
+    const storageKey = `poof-viewed-${id}`;
+
+    const handleBeforeUnload = () => {
+      if (!sessionStorage.getItem(storageKey)) {
+        sessionStorage.setItem(storageKey, '1');
+        // Use sendBeacon for reliable delivery on tab close
+        const url = `${API_URL}/api/secrets/${id}/viewed`;
+        navigator.sendBeacon(url, new Blob([], { type: 'text/plain' }));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [id, status]);
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('loading');
@@ -59,20 +79,18 @@ export default function ReadSecret() {
 
   return (
     <div className="app">
-      <Header />
       <Card>
         {status === 'loading' && (
-          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+          <div className="loading">
             <Spinner size="lg" />
-            <p className="subtitle" style={{ marginTop: '1rem' }}>Decrypting secret...</p>
           </div>
         )}
 
         {status === 'password' && (
           <form onSubmit={handlePasswordSubmit}>
             <Icon type="warning" />
-            <h2 className="section-title" style={{ textAlign: 'center' }}>Password Required</h2>
-            <p className="subtitle" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <h2 className="section-title section-title-center">Password Required</h2>
+            <p className="subtitle subtitle-spaced">
               This secret is password protected
             </p>
             <div className="form-group">
@@ -93,8 +111,8 @@ export default function ReadSecret() {
         {status === 'success' && (
           <>
             <Icon type="success" />
-            <h2 className="section-title" style={{ textAlign: 'center' }}>Secret Revealed</h2>
-            <p className="subtitle" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <h2 className="section-title section-title-center">Secret Revealed</h2>
+            <p className="subtitle subtitle-spaced">
               This secret has been consumed and cannot be viewed again
             </p>
             <SecretDisplay secret={secret} />
@@ -105,8 +123,8 @@ export default function ReadSecret() {
         {status === 'error' && (
           <>
             <Icon type="error" />
-            <h2 className="section-title" style={{ textAlign: 'center' }}>Secret Not Found</h2>
-            <p className="subtitle" style={{ textAlign: 'center' }}>{errorMsg}</p>
+            <h2 className="section-title section-title-center">Secret Not Found</h2>
+            <p className="subtitle subtitle-spaced">{errorMsg}</p>
           </>
         )}
       </Card>

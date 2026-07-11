@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL } from '@/config';
 
 export interface SecretCreateResponse {
   id: string;
@@ -77,6 +77,118 @@ export async function readSecret(
   }
 
   return res.json();
+}
+
+export async function markViewed(id: string): Promise<void> {
+  await fetch(`${API_URL}/api/secrets/${id}/viewed`, { method: "POST" });
+}
+
+export async function downloadFile(
+  id: string,
+  password?: string
+): Promise<{ blob: Blob; filename: string; contentType: string }> {
+  const url = new URL(`${API_URL}/api/files/${id}`);
+  if (password) {
+    url.searchParams.set("password", password);
+  }
+
+  const res = await fetch(url.toString());
+
+  if (res.status === 403) {
+    throw new Error("password_required");
+  }
+
+  if (res.status === 404) {
+    throw new Error("File not found or already consumed");
+  }
+
+  if (!res.ok) {
+    throw new Error("Failed to download file");
+  }
+
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
+  const filename = filenameMatch ? filenameMatch[1] : "download";
+  const contentType = res.headers.get("Content-Type") || "application/octet-stream";
+
+  const blob = await res.blob();
+  return { blob, filename, contentType };
+}
+
+export async function markFileViewed(id: string): Promise<void> {
+  await fetch(`${API_URL}/api/files/${id}/viewed`, { method: "POST" });
+}
+
+// ── API Keys ──
+
+export interface APIKeyItem {
+  id: string;
+  key: string;
+  name: string;
+  created_at: string;
+  rate_limit: number;
+  is_active: boolean;
+}
+
+export async function fetchAPIKeys(): Promise<APIKeyItem[]> {
+  const res = await fetch(`${API_URL}/api/keys/`);
+  if (!res.ok) throw new Error("Failed to load API keys");
+  const data = await res.json();
+  return data.keys || [];
+}
+
+export async function createAPIKey(
+  name: string,
+  rateLimit: number
+): Promise<{ key: string }> {
+  const res = await fetch(`${API_URL}/api/keys/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, rate_limit: rateLimit }),
+  });
+  if (!res.ok) throw new Error("Failed to create API key");
+  return res.json();
+}
+
+export async function revokeAPIKey(keyId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/keys/${keyId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to revoke API key");
+}
+
+// ── Audit ──
+
+export interface AuditEntry {
+  id: string;
+  event: string;
+  resource_id: string;
+  resource_type: string;
+  timestamp: string;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+}
+
+export interface AuditStats {
+  total_events: number;
+  by_event: Record<string, number>;
+}
+
+export async function fetchAuditEntries(limit = 100): Promise<AuditEntry[]> {
+  const res = await fetch(`${API_URL}/api/audit/?limit=${limit}`);
+  if (!res.ok) throw new Error("Failed to load audit entries");
+  const data = await res.json();
+  return data.entries || [];
+}
+
+export async function fetchAuditStats(): Promise<AuditStats> {
+  const res = await fetch(`${API_URL}/api/audit/stats`);
+  if (!res.ok) throw new Error("Failed to load audit stats");
+  return res.json();
+}
+
+export async function exportAuditLogs(format: "json" | "csv"): Promise<string> {
+  const res = await fetch(`${API_URL}/api/audit/export?format=${format}`);
+  if (!res.ok) throw new Error("Failed to export logs");
+  return res.text();
 }
 
 export async function uploadFile(

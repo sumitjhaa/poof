@@ -36,15 +36,12 @@ async def read_secret(request: Request, id: str, password: str = None):
     if views_remaining <= 0:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "Secret has been consumed"})
 
-    # Increment view count
-    await storage.increment_view(id)
-
-    # Log audit event
+    # Log audit event (view count incremented via POST /viewed on tab close)
     audit_log.log(
         event=AuditEvent.SECRET_READ,
         resource_id=id,
         resource_type="secret",
-        metadata={"views_remaining": views_remaining - 1},
+        metadata={"views_remaining": views_remaining},
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -54,6 +51,16 @@ async def read_secret(request: Request, id: str, password: str = None):
         encrypted_data=secret["encrypted_data"],
         created_at=secret["created_at"],
         expires_at=secret["expires_at"],
-        views_remaining=views_remaining - 1,
+        views_remaining=views_remaining,
         has_password=secret.get("password_hash") is not None,
     )
+
+
+@router.post("/{id}/viewed", status_code=204)
+@limiter.limit("10/minute")
+async def mark_viewed(request: Request, id: str):
+    secret = await storage.get(id)
+    if not secret:
+        return None
+    await storage.increment_view(id)
+    return None

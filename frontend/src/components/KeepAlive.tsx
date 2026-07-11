@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/config';
 const PING_INTERVAL = 10 * 60 * 1000;
 
 export default function KeepAlive() {

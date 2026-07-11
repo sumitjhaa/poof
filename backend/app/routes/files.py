@@ -98,8 +98,6 @@ async def download_file(
     if views_remaining <= 0:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "File has been consumed"})
 
-    await storage.increment_view(id)
-
     import json
     file_data = json.loads(secret["encrypted_data"])
 
@@ -118,3 +116,13 @@ async def download_file(
             "Content-Disposition": f'attachment; filename="{file_data["filename"]}"',
         },
     )
+
+
+@router.post("/{id}/viewed", status_code=204)
+@limiter.limit("10/minute")
+async def mark_file_viewed(request: Request, id: str):
+    secret = await storage.get(id)
+    if not secret:
+        return None
+    await storage.increment_view(id)
+    return None

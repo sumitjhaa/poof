@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { generateKey, encrypt, encodeKey, hashPassword } from '@/utils/crypto';
 import { createSecret } from '@/utils/api';
-import { Card, Spinner, Header, Footer, CopyButton } from '@/components';
+import { Card, Spinner, Footer, CopyButton } from '@/components';
 import { useToast } from '@/components/Toast';
 
 const EXPIRY_OPTIONS = [
@@ -26,6 +26,7 @@ export default function Home() {
   const [expiresIn, setExpiresIn] = useState(3600);
   const [maxViews, setMaxViews] = useState(1);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [usePassword, setUsePassword] = useState(false);
   const [webhook, setWebhook] = useState('');
   const [useWebhook, setUseWebhook] = useState(false);
@@ -72,15 +73,14 @@ export default function Home() {
   if (result) {
     return (
       <div className="app">
-        <Header />
         <Card>
           <div className="icon icon-success">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="section-title" style={{ textAlign: 'center' }}>Secret Created</h2>
-          <p className="subtitle" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <h2 className="section-title section-title-center">Secret Created</h2>
+          <p className="subtitle subtitle-spaced">
             Share this link before it expires
           </p>
           <div className="secret-box">
@@ -89,8 +89,7 @@ export default function Home() {
           </div>
           <CopyButton text={result.url} />
           <button
-            className="btn btn-secondary"
-            style={{ marginTop: '0.75rem' }}
+            className="btn btn-secondary result-actions"
             onClick={() => { setResult(null); setSecret(''); }}
           >
             Create Another
@@ -103,7 +102,6 @@ export default function Home() {
 
   return (
     <div className="app">
-      <Header />
       <Card>
         <h2 className="section-title">Create a Secret</h2>
         <div className="form-group">
@@ -155,13 +153,35 @@ export default function Home() {
 
         {usePassword && (
           <div className="form-group">
-            <input
-              className="input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password..."
-            />
+            <div className="input-group">
+              <input
+                className="input"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password..."
+              />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm eye-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -188,13 +208,15 @@ export default function Home() {
           </div>
         )}
 
-        <button
-          className="btn btn-primary"
-          onClick={handleCreate}
-          disabled={!secret.trim() || loading}
-        >
-          {loading ? <Spinner /> : 'Create Secret'}
-        </button>
+        <div className="form-actions-right">
+          <button
+            className="btn btn-primary"
+            onClick={handleCreate}
+            disabled={!secret.trim() || loading}
+          >
+            {loading ? <Spinner /> : 'Create Secret'}
+          </button>
+        </div>
       </Card>
       <Footer />
     </div>
