@@ -44,10 +44,11 @@ async def create_secret(request: Request, data: SecretCreate):
         user_agent=request.headers.get("user-agent"),
     )
 
+    base_url = str(request.base_url).rstrip("/")
     return SecretResponse(
         id=id,
         created_at=secret["created_at"],
         expires_at=secret["expires_at"],
-        url=f"/s/{id}",
+        url=f"{base_url}/s/{id}",
         webhook_id=webhook.id if data.webhook_url else None,
     )

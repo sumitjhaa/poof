@@ -59,7 +59,9 @@ export default function Home() {
         useWebhook ? webhook : undefined
       );
       const keyEncoded = encodeKey(key);
-      const fullUrl = `${window.location.origin}/s/${response.id}#key=${keyEncoded}`;
+      const fullUrl = response.url
+        ? `${response.url}#key=${keyEncoded}`
+        : `${window.location.origin}/s/${response.id}#key=${keyEncoded}`;
 
       setResult({ url: fullUrl });
       addToast('success', 'Secret created successfully');

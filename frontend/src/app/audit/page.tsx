@@ -5,27 +5,26 @@ import { Card, Spinner } from '@/components';
 import { useToast } from '@/components/Toast';
 import { fetchAuditEntries, fetchAuditStats, exportAuditLogs, AuditEntry } from '@/utils/api';
 
-const EVENT_BG: Record<string, string> = {
-  'secret.created': 'var(--success-muted)',
-  'secret.read': 'var(--info-muted)',
-  'secret.deleted': 'var(--error-muted)',
-  'secret.expired': 'var(--error-muted)',
-  'file.uploaded': 'var(--success-muted)',
-  'file.downloaded': 'var(--info-muted)',
-  'apikey.created': 'var(--success-muted)',
-  'apikey.revoked': 'var(--error-muted)',
+const EVENT_META: Record<string, { label: string; color: string; bg: string; type: string }> = {
+  'secret.created':  { label: 'Created',   color: 'var(--success)', bg: 'var(--success-muted)', type: 'Secret' },
+  'secret.read':     { label: 'Read',      color: 'var(--info)',    bg: 'var(--info-muted)',    type: 'Secret' },
+  'secret.deleted':  { label: 'Deleted',   color: 'var(--error)',   bg: 'var(--error-muted)',   type: 'Secret' },
+  'secret.expired':  { label: 'Expired',   color: 'var(--error)',   bg: 'var(--error-muted)',   type: 'Secret' },
+  'file.uploaded':   { label: 'Uploaded',  color: 'var(--success)', bg: 'var(--success-muted)', type: 'File' },
+  'file.downloaded': { label: 'Downloaded',color: 'var(--info)',    bg: 'var(--info-muted)',    type: 'File' },
+  'apikey.created':  { label: 'Key Created', color: 'var(--success)', bg: 'var(--success-muted)', type: 'Key' },
+  'apikey.revoked':  { label: 'Key Revoked', color: 'var(--error)',   bg: 'var(--error-muted)',   type: 'Key' },
 };
 
-const EVENT_LABELS: Record<string, string> = {
-  'secret.created': 'Created',
-  'secret.read': 'Read',
-  'secret.deleted': 'Deleted',
-  'secret.expired': 'Expired',
-  'file.uploaded': 'Uploaded',
-  'file.downloaded': 'Downloaded',
-  'apikey.created': 'Key Created',
-  'apikey.revoked': 'Key Revoked',
-};
+function formatTime(ts: string) {
+  const d = new Date(ts);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (isToday) return time;
+  const day = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${day} ${time}`;
+}
 
 export default function AuditPage() {
   const { addToast } = useToast();
@@ -92,12 +91,17 @@ export default function AuditPage() {
               <div className="stat-value">{stats.total}</div>
               <div className="stat-label">Total</div>
             </div>
-            {Object.entries(stats.byEvent).slice(0, 4).map(([event, count]) => (
-              <div key={event} className="stat">
-                <div className="stat-value">{count}</div>
-                <div className="stat-label">{EVENT_LABELS[event] || event}</div>
-              </div>
-            ))}
+            {Object.entries(stats.byEvent).slice(0, 4).map(([event, count]) => {
+              const meta = EVENT_META[event];
+              return (
+                <div key={event} className="stat">
+                  <div className="stat-value" style={{ color: meta?.color || 'var(--text)' }}>
+                    {count}
+                  </div>
+                  <div className="stat-label">{meta?.label || event}</div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -118,24 +122,30 @@ export default function AuditPage() {
         ) : (
           <div>
             <div className="audit-header">
+              <span>Event</span>
               <span>Time</span>
               <span>IP</span>
               <span>Location</span>
             </div>
-            {filteredEntries.map((entry) => (
-              <div
-                key={entry.id}
-                className="audit-row"
-                style={{ background: EVENT_BG[entry.event] || 'transparent' }}
-                title={EVENT_LABELS[entry.event] || entry.event}
-              >
-                <span className="table-cell-mono">
-                  {new Date(entry.timestamp).toLocaleString()}
-                </span>
-                <span className="table-cell-mono">{entry.ip_address || '—'}</span>
-                <span className="table-cell">{entry.location || '—'}</span>
-              </div>
-            ))}
+            {filteredEntries.map((entry) => {
+              const meta = EVENT_META[entry.event];
+              return (
+                <div
+                  key={entry.id}
+                  className="audit-row"
+                  style={{ background: meta?.bg || 'transparent' }}
+                >
+                  <span style={{ color: meta?.color || 'var(--text)', fontWeight: 600, fontSize: '0.75rem' }}>
+                    {meta?.type} {meta?.label || entry.event}
+                  </span>
+                  <span className="table-cell-mono">
+                    {formatTime(entry.timestamp)}
+                  </span>
+                  <span className="table-cell-mono">{entry.ip_address || '—'}</span>
+                  <span className="table-cell">{entry.location || '—'}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>
