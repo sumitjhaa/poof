@@ -74,11 +74,18 @@ class PostgresStorage:
             if not secret:
                 return None
 
-            secret.views_count += 1
-            if secret.views_count >= secret.max_views:
-                secret.is_deleted = True
-                secret.deleted_at = datetime.now(timezone.utc)
+            new_count = secret.views_count + 1
+            should_delete = new_count >= secret.max_views
 
+            await session.execute(
+                update(Secret)
+                .where(Secret.id == id, Secret.is_deleted == False)
+                .values(
+                    views_count=new_count,
+                    is_deleted=should_delete,
+                    deleted_at=datetime.now(timezone.utc) if should_delete else None,
+                )
+            )
             await session.commit()
 
             return {
@@ -87,8 +94,8 @@ class PostgresStorage:
                 "created_at": secret.created_at,
                 "expires_at": secret.expires_at,
                 "max_views": secret.max_views,
-                "views_count": secret.views_count,
-                "is_deleted": secret.is_deleted,
+                "views_count": new_count,
+                "is_deleted": should_delete,
             }
 
     async def delete(self, id: str) -> bool:

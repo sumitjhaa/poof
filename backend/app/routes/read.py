@@ -34,6 +34,8 @@ async def read_secret(request: Request, id: str, password: str = None):
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "Secret has been consumed"})
 
     updated = await storage.increment_view(id)
+    if not updated:
+        raise HTTPException(status_code=410, detail={"error": "consumed", "message": "Secret has been consumed"})
 
     audit_log.log(
         event=AuditEvent.SECRET_READ,

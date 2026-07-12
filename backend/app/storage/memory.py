@@ -33,8 +33,11 @@ class MemoryStorage:
         return secret
 
     def increment_view(self, id: str) -> dict | None:
-        secret = self.get(id)
-        if not secret:
+        secret = self.secrets.get(id)
+        if not secret or secret["is_deleted"]:
+            return None
+        if datetime.now(timezone.utc) > secret["expires_at"]:
+            self.delete(id)
             return None
         secret["views_count"] += 1
         if secret["views_count"] >= secret["max_views"]:
