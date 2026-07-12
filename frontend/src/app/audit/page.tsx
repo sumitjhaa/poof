@@ -5,6 +5,17 @@ import { Card, Spinner } from '@/components';
 import { useToast } from '@/components/Toast';
 import { fetchAuditEntries, fetchAuditStats, exportAuditLogs, AuditEntry } from '@/utils/api';
 
+const EVENT_BG: Record<string, string> = {
+  'secret.created': 'var(--success-muted)',
+  'secret.read': 'var(--info-muted)',
+  'secret.deleted': 'var(--error-muted)',
+  'secret.expired': 'var(--error-muted)',
+  'file.uploaded': 'var(--success-muted)',
+  'file.downloaded': 'var(--info-muted)',
+  'apikey.created': 'var(--success-muted)',
+  'apikey.revoked': 'var(--error-muted)',
+};
+
 const EVENT_LABELS: Record<string, string> = {
   'secret.created': 'Created',
   'secret.read': 'Read',
@@ -15,12 +26,6 @@ const EVENT_LABELS: Record<string, string> = {
   'apikey.created': 'Key Created',
   'apikey.revoked': 'Key Revoked',
 };
-
-function getEventBadge(event: string) {
-  if (event.includes('created') || event.includes('uploaded')) return 'badge-success';
-  if (event.includes('read') || event.includes('downloaded')) return 'badge-info';
-  return 'badge-error';
-}
 
 export default function AuditPage() {
   const { addToast } = useToast();
@@ -64,7 +69,7 @@ export default function AuditPage() {
   };
 
   const filteredEntries = filter
-    ? entries.filter((e) => e.event.includes(filter) || e.resource_type.includes(filter) || (e.location || '').includes(filter))
+    ? entries.filter((e) => e.event.includes(filter) || (e.ip_address || '').includes(filter) || (e.location || '').includes(filter))
     : entries;
 
   return (
@@ -102,7 +107,7 @@ export default function AuditPage() {
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by event, type, or location..."
+            placeholder="Filter by event, IP, or location..."
           />
         </div>
 
@@ -112,26 +117,21 @@ export default function AuditPage() {
           <div className="empty">No audit entries found</div>
         ) : (
           <div>
-            <div className="table-header">
+            <div className="audit-header">
               <span>Time</span>
-              <span>Event</span>
-              <span>Resource</span>
-              <span>ID</span>
               <span>IP</span>
               <span>Location</span>
             </div>
             {filteredEntries.map((entry) => (
-              <div key={entry.id} className="table-row">
+              <div
+                key={entry.id}
+                className="audit-row"
+                style={{ background: EVENT_BG[entry.event] || 'transparent' }}
+                title={EVENT_LABELS[entry.event] || entry.event}
+              >
                 <span className="table-cell-mono">
                   {new Date(entry.timestamp).toLocaleString()}
                 </span>
-                <span>
-                  <span className={`badge ${getEventBadge(entry.event)}`}>
-                    {EVENT_LABELS[entry.event] || entry.event}
-                  </span>
-                </span>
-                <span className="table-cell">{entry.resource_type}</span>
-                <span className="table-cell-mono">{entry.resource_id.slice(0, 8)}...</span>
                 <span className="table-cell-mono">{entry.ip_address || '—'}</span>
                 <span className="table-cell">{entry.location || '—'}</span>
               </div>
