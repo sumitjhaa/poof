@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.api_keys import api_key_store, get_api_key_from_header
+from app.api_keys import api_key_store
 from app.models import ErrorResponse
 from app.audit import audit_log, AuditEvent
 
@@ -80,17 +80,3 @@ async def revoke_api_key(request: Request, key_id: str):
     )
 
     return {"status": "revoked"}
-
-
-async def verify_api_key(request: Request):
-    auth = request.headers.get("Authorization")
-    key = get_api_key_from_header(auth)
-
-    if key:
-        api_key = api_key_store.validate(key)
-        if api_key:
-            request.state.api_key = api_key
-            return api_key
-
-    request.state.api_key = None
-    return None

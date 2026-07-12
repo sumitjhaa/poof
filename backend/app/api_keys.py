@@ -1,6 +1,7 @@
 import secrets
-from datetime import datetime, timezone
-from dataclasses import dataclass
+from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass, field
+from fastapi import Request, HTTPException
 
 
 @dataclass
@@ -13,6 +14,30 @@ class APIKey:
     is_active: bool = True
     requests_count: int = 0
     rate_limit: int = 100  # requests per hour
+
+
+class RateLimitBucket:
+    """Simple sliding-window rate limiter for API keys."""
+    def __init__(self):
+        self._requests: dict[str, list[datetime]] = {}
+
+    def check(self, key_id: str, limit: int, window_seconds: int = 3600) -> bool:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(seconds=window_seconds)
+
+        if key_id not in self._requests:
+            self._requests[key_id] = []
+
+        self._requests[key_id] = [t for t in self._requests[key_id] if t > cutoff]
+
+        if len(self._requests[key_id]) >= limit:
+            return False
+
+        self._requests[key_id].append(now)
+        return True
+
+
+rate_limiter = RateLimitBucket()
 
 
 class APIKeyStore:
@@ -66,3 +91,29 @@ def get_api_key_from_header(authorization: str | None) -> str | None:
         return authorization[7:]
 
     return authorization
+
+
+async def verify_api_key(request: Request) -> APIKey | None:
+    """Optional dependency: extracts and validates API key from Authorization header.
+    Returns the APIKey if valid, None otherwise. Never rejects the request."""
+    auth = request.headers.get("Authorization")
+    key = get_api_key_from_header(auth)
+
+    if key:
+        api_key = api_key_store.validate(key)
+        if api_key:
+            request.state.api_key = api_key
+            return api_key
+
+    request.state.api_key = None
+    return None
+
+
+def require_rate_limit(request: Request, api_key: APIKey | None):
+    """Check rate limit: API key gets its own limit, otherwise pass through to slowapi."""
+    if api_key:
+        if not rate_limiter.check(api_key.id, api_key.rate_limit):
+            raise HTTPException(
+                status_code=429,
+                detail={"error": "rate_limited", "message": f"Rate limit exceeded ({api_key.rate_limit}/hour)"}
+            )
