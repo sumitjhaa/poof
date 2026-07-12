@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { downloadFile } from '@/utils/api';
-import { API_URL } from '@/config';
 import { Card, Spinner, Icon } from '@/components';
 
 export default function DownloadFile() {
@@ -23,7 +22,6 @@ export default function DownloadFile() {
       setFilename(result.filename);
       setFileSize(result.blob.size);
 
-      // Auto-download
       const url = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
@@ -48,24 +46,6 @@ export default function DownloadFile() {
   useEffect(() => {
     fetchFile();
   }, [fetchFile]);
-
-  // Mark as viewed when tab closes
-  useEffect(() => {
-    if (status !== 'ready') return;
-
-    const storageKey = `poof-file-viewed-${id}`;
-
-    const handleBeforeUnload = () => {
-      if (!sessionStorage.getItem(storageKey)) {
-        sessionStorage.setItem(storageKey, '1');
-        const url = `${API_URL}/api/files/${id}/viewed`;
-        navigator.sendBeacon(url, new Blob([], { type: 'text/plain' }));
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [id, status]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

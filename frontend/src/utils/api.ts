@@ -79,10 +79,6 @@ export async function readSecret(
   return res.json();
 }
 
-export async function markViewed(id: string): Promise<void> {
-  await fetch(`${API_URL}/api/secrets/${id}/viewed`, { method: "POST" });
-}
-
 export async function downloadFile(
   id: string,
   password?: string
@@ -113,10 +109,6 @@ export async function downloadFile(
 
   const blob = await res.blob();
   return { blob, filename, contentType };
-}
-
-export async function markFileViewed(id: string): Promise<void> {
-  await fetch(`${API_URL}/api/files/${id}/viewed`, { method: "POST" });
 }
 
 // ── API Keys ──
@@ -191,10 +183,14 @@ export async function exportAuditLogs(format: "json" | "csv"): Promise<string> {
   return res.text();
 }
 
+// ── File Upload ──
+
 export async function uploadFile(
   file: File,
   expiresIn: string = "1h",
-  maxViews: number = 1
+  maxViews: number = 1,
+  passwordHash?: string,
+  passwordSalt?: string,
 ): Promise<FileUploadResponse> {
   const expiryMap: Record<string, number> = {
     "5m": 300,
@@ -207,6 +203,13 @@ export async function uploadFile(
   formData.append("file", file);
   formData.append("expires_in", String(expiryMap[expiresIn] || 3600));
   formData.append("max_views", String(maxViews));
+
+  if (passwordHash) {
+    formData.append("password_hash", passwordHash);
+  }
+  if (passwordSalt) {
+    formData.append("password_salt", passwordSalt);
+  }
 
   const res = await fetch(`${API_URL}/api/files/`, {
     method: "POST",

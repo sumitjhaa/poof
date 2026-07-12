@@ -59,6 +59,8 @@ class PostgresStorage:
                 "max_views": secret.max_views,
                 "views_count": secret.views_count,
                 "is_deleted": secret.is_deleted,
+                "password_hash": secret.password_hash,
+                "password_salt": secret.password_salt,
             }
 
     async def increment_view(self, id: str) -> dict | None:

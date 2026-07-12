@@ -62,13 +62,14 @@ async def upload_file(
         ip_address=request.client.host if request.client else None,
     )
 
+    base_url = str(request.base_url).rstrip("/")
     return {
         "id": secret["id"],
         "filename": file.filename,
         "size": len(content),
         "created_at": secret["created_at"],
         "expires_at": secret["expires_at"],
-        "url": f"/f/{secret['id']}",
+        "url": f"{base_url}/f/{secret['id']}",
     }
 
 
@@ -89,7 +90,7 @@ async def download_file(
             detail={"error": "password_required", "message": "Password is required"}
         )
 
-    if password:
+    if password and secret.get("password_hash"):
         from app.auth import verify_password
         if not verify_password(password, secret["password_hash"], secret["password_salt"]):
             raise HTTPException(status_code=403, detail={"error": "invalid_password", "message": "Incorrect password"})
@@ -97,6 +98,8 @@ async def download_file(
     views_remaining = secret["max_views"] - secret["views_count"]
     if views_remaining <= 0:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "File has been consumed"})
+
+    await storage.increment_view(id)
 
     import json
     file_data = json.loads(secret["encrypted_data"])
@@ -116,13 +119,3 @@ async def download_file(
             "Content-Disposition": f'attachment; filename="{file_data["filename"]}"',
         },
     )
-
-
-@router.post("/{id}/viewed", status_code=204)
-@limiter.limit("10/minute")
-async def mark_file_viewed(request: Request, id: str):
-    secret = await storage.get(id)
-    if not secret:
-        return None
-    await storage.increment_view(id)
-    return None

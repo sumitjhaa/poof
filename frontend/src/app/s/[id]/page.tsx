@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { decodeKey, decrypt } from '@/utils/crypto';
 import { readSecret } from '@/utils/api';
-import { API_URL } from '@/config';
 import { Card, Spinner, Icon, SecretDisplay, CopyButton } from '@/components';
 
 export default function ReadSecret() {
@@ -51,25 +50,6 @@ export default function ReadSecret() {
   useEffect(() => {
     fetchSecret();
   }, [fetchSecret]);
-
-  // Mark as viewed when tab closes (not on page load/refresh)
-  useEffect(() => {
-    if (status !== 'success') return;
-
-    const storageKey = `poof-viewed-${id}`;
-
-    const handleBeforeUnload = () => {
-      if (!sessionStorage.getItem(storageKey)) {
-        sessionStorage.setItem(storageKey, '1');
-        // Use sendBeacon for reliable delivery on tab close
-        const url = `${API_URL}/api/secrets/${id}/viewed`;
-        navigator.sendBeacon(url, new Blob([], { type: 'text/plain' }));
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [id, status]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
