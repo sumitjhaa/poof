@@ -50,7 +50,7 @@ def test_upload_file_full_url():
     resp = _upload(b"data", "file.pdf")
     data = resp.json()
     url = data["url"]
-    assert url.startswith("http://testserver/f/")
+    assert url.startswith("/f/")
     assert data["id"] in url
 
 

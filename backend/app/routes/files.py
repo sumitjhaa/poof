@@ -62,14 +62,13 @@ async def upload_file(
         ip_address=request.client.host if request.client else None,
     )
 
-    base_url = str(request.base_url).rstrip("/")
     return {
         "id": secret["id"],
         "filename": file.filename,
         "size": len(content),
         "created_at": secret["created_at"],
         "expires_at": secret["expires_at"],
-        "url": f"{base_url}/f/{secret['id']}",
+        "url": f"/f/{secret['id']}",
     }
 
 

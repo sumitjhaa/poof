@@ -31,7 +31,7 @@ def test_create_secret():
     assert resp.status_code == 201
     data = resp.json()
     assert "id" in data
-    assert data["url"].endswith(f"/s/{data['id']}")
+    assert data["url"] == f"/s/{data['id']}"
     assert "created_at" in data
     assert "expires_at" in data
 

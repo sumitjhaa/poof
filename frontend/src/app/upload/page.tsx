@@ -40,7 +40,10 @@ export default function UploadPage() {
       }
 
       const data = await uploadFile(file, expires, views, passwordHash, passwordSalt);
-      setResult(data);
+      const fullUrl = data.url.startsWith('http')
+        ? data.url
+        : `${window.location.origin}${data.url}`;
+      setResult({ ...data, url: fullUrl });
       addToast('success', 'File uploaded successfully');
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Upload failed');
