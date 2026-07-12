@@ -72,9 +72,9 @@ def download(url: str, output: str):
 
         if resp.status_code == 403:
             password = click.prompt("Enter password", hide_input=True)
-            resp = httpx.get(
-                f"{API_URL}/api/files/{file_id}",
-                params={"password": password},
+            resp = httpx.post(
+                f"{API_URL}/api/files/{file_id}/download",
+                json={"password": password},
                 timeout=30,
             )
 

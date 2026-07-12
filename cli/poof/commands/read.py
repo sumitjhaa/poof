@@ -28,11 +28,11 @@ def read(url: str):
             sys.exit(1)
         
         if resp.status_code == 403:
-            # Password required, prompt user
+            # Password required, prompt user, send via POST body
             password = click.prompt("Enter password", hide_input=True)
-            resp = httpx.get(
-                f"{API_URL}/api/secrets/{secret_id}",
-                params={"password": password},
+            resp = httpx.post(
+                f"{API_URL}/api/secrets/{secret_id}/read",
+                json={"password": password},
                 timeout=10
             )
             

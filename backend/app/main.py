@@ -14,6 +14,8 @@ from app.routes import audit as audit_router
 from app.storage import storage
 from app.limiter import limiter
 from app.security import SecurityHeadersMiddleware
+from app.errors import global_exception_handler, validation_error_handler
+from fastapi.exceptions import RequestValidationError
 
 cleanup_task: Task | None = None
 keepalive_task: Task | None = None
@@ -77,6 +79,8 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(

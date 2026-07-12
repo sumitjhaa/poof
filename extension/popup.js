@@ -19,6 +19,19 @@ const newBtn = document.getElementById('new-btn');
 const decryptedPre = document.getElementById('decrypted');
 const copySecretBtn = document.getElementById('copy-secret-btn');
 
+function base64urlEncode(bytes) {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function base64urlDecode(str) {
+  const padded = str.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - str.length % 4) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, c => c.charCodeAt(0));
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   // Check if URL parameter exists (for reading)
@@ -51,7 +64,7 @@ async function handleCreate() {
       ["encrypt", "decrypt"]
     );
 
-    // Encrypt
+    // Encrypt with random IV (matching frontend format)
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const encoded = new TextEncoder().encode(text);
     const encrypted = await crypto.subtle.encrypt(
@@ -62,19 +75,20 @@ async function handleCreate() {
 
     // Export key
     const keyData = await crypto.subtle.exportKey("raw", key);
-    const keyB64 = btoa(String.fromCharCode(...new Uint8Array(keyData)));
+    const keyB64 = base64urlEncode(new Uint8Array(keyData));
 
-    // Convert to hex
-    const encryptedHex = Array.from(new Uint8Array(encrypted))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Combine IV + ciphertext and base64url-encode (matching frontend)
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    const encryptedB64 = base64urlEncode(combined);
 
     // Send to API
     const response = await fetch(`${API_URL}/api/secrets/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        encrypted_data: encryptedHex,
+        encrypted_data: encryptedB64,
         expires_in: parseInt(expiresSelect.value),
         max_views: parseInt(viewsSelect.value)
       })
@@ -112,8 +126,8 @@ async function showReadView(url) {
 
     const data = await response.json();
 
-    // Decrypt
-    const keyBytes = Uint8Array.from(atob(keyB64), c => c.charCodeAt(0));
+    // Decrypt using frontend-compatible format
+    const keyBytes = base64urlDecode(keyB64);
     const key = await crypto.subtle.importKey(
       "raw",
       keyBytes,
@@ -122,14 +136,14 @@ async function showReadView(url) {
       ["decrypt"]
     );
 
-    const encryptedBytes = new Uint8Array(
-      data.encrypted_data.match(/.{1,2}/g).map(byte => parseInt(byte, 16))
-    );
+    const encryptedBytes = base64urlDecode(data.encrypted_data);
+    const iv = encryptedBytes.slice(0, 12);
+    const ciphertext = encryptedBytes.slice(12);
 
     const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(12) },
+      { name: "AES-GCM", iv },
       key,
-      encryptedBytes
+      ciphertext
     );
 
     const text = new TextDecoder().decode(decrypted);

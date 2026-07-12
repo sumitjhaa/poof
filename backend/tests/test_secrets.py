@@ -122,7 +122,7 @@ def test_read_secret_has_password_true():
     })
     secret_id = create_resp.json()["id"]
 
-    read_resp = client.get(f"/api/secrets/{secret_id}?password=pass")
+    read_resp = client.post(f"/api/secrets/{secret_id}/read", json={"password": "pass"})
     assert read_resp.status_code == 200
     assert read_resp.json()["has_password"] is True
 
@@ -226,7 +226,7 @@ def test_password_wrong_password():
     })
     secret_id = create_resp.json()["id"]
 
-    resp = client.get(f"/api/secrets/{secret_id}?password=wrong-password")
+    resp = client.post(f"/api/secrets/{secret_id}/read", json={"password": "wrong-password"})
     assert resp.status_code == 403
     assert resp.json()["detail"]["error"] == "invalid_password"
 
@@ -246,7 +246,7 @@ def test_password_correct_password():
     })
     secret_id = create_resp.json()["id"]
 
-    resp = client.get(f"/api/secrets/{secret_id}?password=correct-password")
+    resp = client.post(f"/api/secrets/{secret_id}/read", json={"password": "correct-password"})
     assert resp.status_code == 200
     assert resp.json()["encrypted_data"] == encrypted
 
@@ -266,10 +266,10 @@ def test_password_correct_then_consumed():
     })
     secret_id = create_resp.json()["id"]
 
-    resp1 = client.get(f"/api/secrets/{secret_id}?password=pass123")
+    resp1 = client.post(f"/api/secrets/{secret_id}/read", json={"password": "pass123"})
     assert resp1.status_code == 200
 
-    resp2 = client.get(f"/api/secrets/{secret_id}?password=pass123")
+    resp2 = client.post(f"/api/secrets/{secret_id}/read", json={"password": "pass123"})
     assert resp2.status_code == 404
 
 
@@ -288,15 +288,15 @@ def test_password_multi_view():
     })
     secret_id = create_resp.json()["id"]
 
-    resp1 = client.get(f"/api/secrets/{secret_id}?password=mypass")
+    resp1 = client.post(f"/api/secrets/{secret_id}/read", json={"password": "mypass"})
     assert resp1.status_code == 200
     assert resp1.json()["views_remaining"] == 1
 
-    resp2 = client.get(f"/api/secrets/{secret_id}?password=mypass")
+    resp2 = client.post(f"/api/secrets/{secret_id}/read", json={"password": "mypass"})
     assert resp2.status_code == 200
     assert resp2.json()["views_remaining"] == 0
 
-    resp3 = client.get(f"/api/secrets/{secret_id}?password=mypass")
+    resp3 = client.post(f"/api/secrets/{secret_id}/read", json={"password": "mypass"})
     assert resp3.status_code == 404
 
 
@@ -324,7 +324,7 @@ def test_providing_password_for_non_password_secret_does_not_crash():
     })
     secret_id = create_resp.json()["id"]
 
-    resp = client.get(f"/api/secrets/{secret_id}?password=anything")
+    resp = client.post(f"/api/secrets/{secret_id}/read", json={"password": "anything"})
     assert resp.status_code == 200
 
 

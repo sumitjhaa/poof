@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.models import SecretRead, ErrorResponse
@@ -10,11 +11,11 @@ from app.api_keys import APIKey, verify_api_key, require_rate_limit
 router = APIRouter()
 
 
-@router.get("/{id}", response_model=SecretRead, responses={404: {"model": ErrorResponse}, 410: {"model": ErrorResponse}})
-@limiter.limit("30/minute")
-async def read_secret(request: Request, id: str, password: str = None, api_key: APIKey | None = Depends(verify_api_key)):
-    require_rate_limit(request, api_key)
+class SecretPasswordRequest(BaseModel):
+    password: str
 
+
+async def _do_read_secret(id: str, password: str | None, request: Request, api_key: APIKey | None):
     secret = await storage.get(id)
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "Secret not found or expired"})
@@ -61,3 +62,22 @@ async def read_secret(request: Request, id: str, password: str = None, api_key: 
         views_remaining=(updated["max_views"] - updated["views_count"]) if updated else 0,
         has_password=secret.get("password_hash") is not None,
     )
+
+
+@router.get("/{id}", response_model=SecretRead, responses={404: {"model": ErrorResponse}, 410: {"model": ErrorResponse}})
+@limiter.limit("30/minute")
+async def read_secret(request: Request, id: str, api_key: APIKey | None = Depends(verify_api_key)):
+    require_rate_limit(request, api_key)
+    return await _do_read_secret(id, None, request, api_key)
+
+
+@router.post("/{id}/read", response_model=SecretRead, responses={404: {"model": ErrorResponse}, 410: {"model": ErrorResponse}})
+@limiter.limit("30/minute")
+async def read_secret_with_password(
+    request: Request,
+    id: str,
+    body: SecretPasswordRequest,
+    api_key: APIKey | None = Depends(verify_api_key),
+):
+    require_rate_limit(request, api_key)
+    return await _do_read_secret(id, body.password, request, api_key)

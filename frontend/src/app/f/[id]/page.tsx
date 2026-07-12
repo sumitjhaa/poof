@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { downloadFile } from '@/utils/api';
+import { readSecret } from '@/utils/api';
+import { decodeKey, decryptFile } from '@/utils/crypto';
 import { Card, Spinner, Icon } from '@/components';
 
 export default function DownloadFile() {
@@ -17,15 +18,38 @@ export default function DownloadFile() {
   const [downloaded, setDownloaded] = useState(false);
 
   const fetchFile = useCallback(async (pwd?: string) => {
-    try {
-      const result = await downloadFile(id, pwd);
-      setFilename(result.filename);
-      setFileSize(result.blob.size);
+    const hash = window.location.hash;
+    if (!hash.startsWith('#key=')) {
+      setStatus('error');
+      setErrorMsg('Invalid link - missing key');
+      return;
+    }
 
-      const url = URL.createObjectURL(result.blob);
+    const keyB64 = hash.slice(5);
+    const key = decodeKey(keyB64);
+
+    try {
+      const data = await readSecret(id, pwd);
+
+      if (!pwd && data.has_password) {
+        setStatus('password');
+        return;
+      }
+
+      const decryptedBuffer = await decryptFile(key, data.encrypted_data);
+      const metadataStr = new TextDecoder().decode(decryptedBuffer.slice(0, 4096));
+      const metaEnd = metadataStr.indexOf('\n');
+      const metadata = JSON.parse(metadataStr.slice(0, metaEnd));
+      const fileBytes = decryptedBuffer.slice(metaEnd + 1);
+
+      setFilename(metadata.filename);
+      setFileSize(fileBytes.byteLength);
+
+      const blob = new Blob([fileBytes], { type: metadata.contentType });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = result.filename;
+      a.download = metadata.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

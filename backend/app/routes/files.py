@@ -1,5 +1,8 @@
 import json
 import uuid
+import os
+from pydantic import BaseModel
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import Response
 
@@ -9,9 +12,37 @@ from app.limiter import limiter
 from app.audit import audit_log, AuditEvent
 from app.api_keys import APIKey, verify_api_key, require_rate_limit
 
+
+class FilePasswordRequest(BaseModel):
+    password: str
+
 router = APIRouter()
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+def _server_encrypt_file(data: bytes, filename: str, content_type: str) -> str:
+    key = os.urandom(32)
+    nonce = os.urandom(12)
+    aesgcm = AESGCM(key)
+
+    payload = json.dumps({"filename": filename, "content_type": content_type}).encode() + b"\n" + data
+    ciphertext = aesgcm.encrypt(nonce, payload, None)
+    combined = nonce + ciphertext + key
+    return combined.hex()
+
+
+def _server_decrypt_file(encrypted_hex: str) -> tuple[bytes, str, str]:
+    combined = bytes.fromhex(encrypted_hex)
+    nonce = combined[:12]
+    key = combined[-32:]
+    ciphertext = combined[12:-32]
+    aesgcm = AESGCM(key)
+    decrypted = aesgcm.decrypt(nonce, ciphertext, None)
+    meta_end = decrypted.index(b"\n")
+    metadata = json.loads(decrypted[:meta_end])
+    file_data = decrypted[meta_end + 1:]
+    return file_data, metadata["filename"], metadata["content_type"]
 
 
 @router.post("/", responses={400: {"model": ErrorResponse}, 413: {"model": ErrorResponse}})
@@ -41,16 +72,12 @@ async def upload_file(
             detail={"error": "invalid_filename", "message": "Filename is required"}
         )
 
-    file_data = json.dumps({
-        "filename": file.filename,
-        "content_type": file.content_type or "application/octet-stream",
-        "data": content.hex(),
-    })
+    encrypted_data = _server_encrypt_file(content, file.filename, file.content_type or "application/octet-stream")
 
     secret_id = str(uuid.uuid4())
     secret = await storage.create(
         id=secret_id,
-        encrypted_data=file_data,
+        encrypted_data=encrypted_data,
         expires_in=expires_in,
         max_views=max_views,
         password_hash=password_hash,
@@ -79,16 +106,7 @@ async def upload_file(
     }
 
 
-@router.get("/{id}", responses={404: {"model": ErrorResponse}})
-@limiter.limit("30/minute")
-async def download_file(
-    request: Request,
-    id: str,
-    password: str = None,
-    api_key: APIKey | None = Depends(verify_api_key),
-):
-    require_rate_limit(request, api_key)
-
+async def _do_download_file(id: str, password: str | None, request: Request, api_key: APIKey | None) -> Response:
     secret = await storage.get(id)
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "File not found or expired"})
@@ -112,9 +130,9 @@ async def download_file(
     if not updated:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "File has been consumed"})
 
-    file_data = json.loads(secret["encrypted_data"])
+    file_data, filename, content_type = _server_decrypt_file(secret["encrypted_data"])
 
-    metadata = {"filename": file_data["filename"]}
+    metadata = {"filename": filename}
     if api_key:
         metadata["api_key_id"] = api_key.id
 
@@ -127,9 +145,32 @@ async def download_file(
     )
 
     return Response(
-        content=bytes.fromhex(file_data["data"]),
-        media_type=file_data["content_type"],
+        content=file_data,
+        media_type=content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{file_data["filename"]}"',
+            "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+@router.get("/{id}", responses={404: {"model": ErrorResponse}})
+@limiter.limit("30/minute")
+async def download_file(
+    request: Request,
+    id: str,
+    api_key: APIKey | None = Depends(verify_api_key),
+):
+    require_rate_limit(request, api_key)
+    return await _do_download_file(id, None, request, api_key)
+
+
+@router.post("/{id}/download", responses={404: {"model": ErrorResponse}})
+@limiter.limit("30/minute")
+async def download_file_with_password(
+    request: Request,
+    id: str,
+    body: FilePasswordRequest,
+    api_key: APIKey | None = Depends(verify_api_key),
+):
+    require_rate_limit(request, api_key)
+    return await _do_download_file(id, body.password, request, api_key)

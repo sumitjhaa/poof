@@ -2,6 +2,13 @@
 
 const API_URL = "http://localhost:8000";
 
+function base64urlEncode(bytes) {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 // Create context menu on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -36,7 +43,7 @@ async function createSecret(text) {
       ["encrypt", "decrypt"]
     );
 
-    // Encrypt
+    // Encrypt with random IV (frontend-compatible format)
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const encoded = new TextEncoder().encode(text);
     const encrypted = await crypto.subtle.encrypt(
@@ -45,21 +52,22 @@ async function createSecret(text) {
       encoded
     );
 
-    // Export key
+    // Export key as base64url
     const keyData = await crypto.subtle.exportKey("raw", key);
-    const keyB64 = btoa(String.fromCharCode(...new Uint8Array(keyData)));
+    const keyB64 = base64urlEncode(new Uint8Array(keyData));
 
-    // Convert to hex
-    const encryptedHex = Array.from(new Uint8Array(encrypted))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Combine IV + ciphertext and base64url-encode (matching frontend)
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    const encryptedB64 = base64urlEncode(combined);
 
     // Send to API
     const response = await fetch(`${API_URL}/api/secrets/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        encrypted_data: encryptedHex,
+        encrypted_data: encryptedB64,
         expires_in: 3600,
         max_views: 1
       })

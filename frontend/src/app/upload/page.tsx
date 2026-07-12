@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Card, Spinner, CopyButton } from '@/components';
-import { uploadFile } from '@/utils/api';
-import { hashPassword } from '@/utils/crypto';
+import { createSecret } from '@/utils/api';
+import { generateKey, encodeKey, encryptFile, hashPassword } from '@/utils/crypto';
 import { useToast } from '@/components/Toast';
 
 export default function UploadPage() {
@@ -34,15 +34,21 @@ export default function UploadPage() {
       let passwordSalt: string | undefined;
 
       if (usePassword && password) {
-        const { hash, salt } = await hashPassword(password);
-        passwordHash = hash;
-        passwordSalt = salt;
+        const h = await hashPassword(password);
+        passwordHash = h.hash;
+        passwordSalt = h.salt;
       }
 
-      const data = await uploadFile(file, expires, views, passwordHash, passwordSalt);
-      const fullUrl = data.url.startsWith('http')
-        ? data.url
-        : `${window.location.origin}${data.url}`;
+      const key = generateKey();
+      const { encrypted } = await encryptFile(key, file);
+
+      const expiryMap: Record<string, number> = {
+        "5m": 300, "1h": 3600, "1d": 86400, "7d": 604800,
+      };
+
+      const data = await createSecret(encrypted, expiryMap[expires] || 3600, views, passwordHash, passwordSalt);
+      const keyEncoded = encodeKey(key);
+      const fullUrl = `${window.location.origin}/f/${data.id}#key=${keyEncoded}`;
       setResult({ ...data, url: fullUrl });
       addToast('success', 'File uploaded successfully');
     } catch (err) {

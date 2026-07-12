@@ -57,12 +57,17 @@ export async function readSecret(
   id: string,
   password?: string
 ): Promise<SecretReadResponse> {
-  const url = new URL(`${API_URL}/api/secrets/${id}`);
-  if (password) {
-    url.searchParams.set("password", password);
-  }
+  let res: Response;
 
-  const res = await fetch(url.toString());
+  if (password) {
+    res = await fetch(`${API_URL}/api/secrets/${id}/read`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+  } else {
+    res = await fetch(`${API_URL}/api/secrets/${id}`);
+  }
 
   if (res.status === 403) {
     throw new Error("password_required");
@@ -83,12 +88,17 @@ export async function downloadFile(
   id: string,
   password?: string
 ): Promise<{ blob: Blob; filename: string; contentType: string }> {
-  const url = new URL(`${API_URL}/api/files/${id}`);
-  if (password) {
-    url.searchParams.set("password", password);
-  }
+  let res: Response;
 
-  const res = await fetch(url.toString());
+  if (password) {
+    res = await fetch(`${API_URL}/api/files/${id}/download`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+  } else {
+    res = await fetch(`${API_URL}/api/files/${id}`);
+  }
 
   if (res.status === 403) {
     throw new Error("password_required");

@@ -74,6 +74,68 @@ export function decodeKey(keyB64: string): Uint8Array {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
+export async function encryptFile(
+  key: Uint8Array,
+  file: File
+): Promise<{ encrypted: string; filename: string; contentType: string }> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const fileBuffer = await file.arrayBuffer();
+  const fileBytes = new Uint8Array(fileBuffer);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key.buffer as ArrayBuffer,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
+    cryptoKey,
+    fileBytes
+  );
+
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+
+  const encryptedB64 = btoa(String.fromCharCode(...combined))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  return { encrypted: encryptedB64, filename: file.name, contentType: file.type || "application/octet-stream" };
+}
+
+export async function decryptFile(
+  key: Uint8Array,
+  encryptedB64: string
+): Promise<ArrayBuffer> {
+  const padded = encryptedB64.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+
+  const iv = bytes.slice(0, 12);
+  const ciphertext = bytes.slice(12);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key.buffer as ArrayBuffer,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv.buffer as ArrayBuffer },
+    cryptoKey,
+    ciphertext
+  );
+
+  return decrypted;
+}
+
 export async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {
   const encoder = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));

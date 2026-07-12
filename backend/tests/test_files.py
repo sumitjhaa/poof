@@ -61,14 +61,11 @@ def test_upload_file_stores_password():
     secret = storage._memory.secrets[data["id"]]
     assert secret["password_hash"] == "abc123"
     assert secret["password_salt"] == "def456"
-
-
-def test_upload_file_no_password():
-    resp = _upload(b"data", "open.bin")
-    data = resp.json()
-    secret = storage._memory.secrets[data["id"]]
-    assert secret["password_hash"] is None
-    assert secret["password_salt"] is None
+    # Verify the data is decryptable
+    from app.routes.files import _server_decrypt_file
+    file_bytes, fname, ctype = _server_decrypt_file(secret["encrypted_data"])
+    assert fname == "secret.bin"
+    assert file_bytes == b"data"
 
 
 # ── Download ──
@@ -82,6 +79,15 @@ def test_download_file():
     assert dl_resp.status_code == 200
     assert dl_resp.content == content
     assert "download.txt" in dl_resp.headers.get("content-disposition", "")
+
+
+def test_upload_file_encrypts_stored_data():
+    resp = _upload(b"test data", "test.txt")
+    assert resp.status_code == 200
+    file_id = resp.json()["id"]
+    stored = storage._memory.secrets[file_id]
+    # Should be hex-encoded encrypted data, not plaintext
+    assert stored["encrypted_data"] != json.dumps({"filename": "test.txt", "content_type": "text/plain", "data": "746573742064617461"})
 
 
 def test_download_file_content_type():
@@ -166,7 +172,7 @@ def test_download_wrong_password():
     resp = _upload(b"data", "protected.bin", password_hash=h, password_salt=s)
     file_id = resp.json()["id"]
 
-    dl = client.get(f"/api/files/{file_id}?password=wrong")
+    dl = client.post(f"/api/files/{file_id}/download", json={"password": "wrong"})
     assert dl.status_code == 403
     assert dl.json()["detail"]["error"] == "invalid_password"
 
@@ -179,7 +185,7 @@ def test_download_correct_password():
     resp = _upload(content, "secret.bin", password_hash=h, password_salt=s)
     file_id = resp.json()["id"]
 
-    dl = client.get(f"/api/files/{file_id}?password=real-pass")
+    dl = client.post(f"/api/files/{file_id}/download", json={"password": "real-pass"})
     assert dl.status_code == 200
     assert dl.content == content
 
@@ -191,10 +197,10 @@ def test_download_password_consumed():
     resp = _upload(b"data", "once.bin", max_views=1, password_hash=h, password_salt=s)
     file_id = resp.json()["id"]
 
-    dl1 = client.get(f"/api/files/{file_id}?password=mypass")
+    dl1 = client.post(f"/api/files/{file_id}/download", json={"password": "mypass"})
     assert dl1.status_code == 200
 
-    dl2 = client.get(f"/api/files/{file_id}?password=mypass")
+    dl2 = client.post(f"/api/files/{file_id}/download", json={"password": "mypass"})
     assert dl2.status_code == 404
 
 
@@ -202,7 +208,7 @@ def test_providing_password_for_non_password_file_does_not_crash():
     resp = _upload(b"data", "open.bin")
     file_id = resp.json()["id"]
 
-    dl = client.get(f"/api/files/{file_id}?password=anything")
+    dl = client.post(f"/api/files/{file_id}/download", json={"password": "anything"})
     assert dl.status_code == 200
 
 
