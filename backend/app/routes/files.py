@@ -1,12 +1,13 @@
-import os
+import json
 import uuid
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import Response
 
 from app.models import ErrorResponse
 from app.storage import storage
 from app.limiter import limiter
 from app.audit import audit_log, AuditEvent
+from app.api_keys import APIKey, verify_api_key, require_rate_limit
 
 router = APIRouter()
 
@@ -22,7 +23,10 @@ async def upload_file(
     max_views: int = Form(1),
     password_hash: str = Form(None),
     password_salt: str = Form(None),
+    api_key: APIKey | None = Depends(verify_api_key),
 ):
+    require_rate_limit(request, api_key)
+
     content = await file.read()
 
     if len(content) > MAX_FILE_SIZE:
@@ -37,7 +41,6 @@ async def upload_file(
             detail={"error": "invalid_filename", "message": "Filename is required"}
         )
 
-    import json
     file_data = json.dumps({
         "filename": file.filename,
         "content_type": file.content_type or "application/octet-stream",
@@ -54,11 +57,15 @@ async def upload_file(
         password_salt=password_salt,
     )
 
+    metadata = {"filename": file.filename, "size": len(content)}
+    if api_key:
+        metadata["api_key_id"] = api_key.id
+
     audit_log.log(
         event=AuditEvent.FILE_UPLOADED,
         resource_id=secret_id,
         resource_type="file",
-        metadata={"filename": file.filename, "size": len(content)},
+        metadata=metadata,
         ip_address=request.client.host if request.client else None,
     )
 
@@ -78,7 +85,10 @@ async def download_file(
     request: Request,
     id: str,
     password: str = None,
+    api_key: APIKey | None = Depends(verify_api_key),
 ):
+    require_rate_limit(request, api_key)
+
     secret = await storage.get(id)
     if not secret:
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "File not found or expired"})
@@ -98,16 +108,21 @@ async def download_file(
     if views_remaining <= 0:
         raise HTTPException(status_code=410, detail={"error": "consumed", "message": "File has been consumed"})
 
-    await storage.increment_view(id)
+    updated = await storage.increment_view(id)
+    if not updated:
+        raise HTTPException(status_code=410, detail={"error": "consumed", "message": "File has been consumed"})
 
-    import json
     file_data = json.loads(secret["encrypted_data"])
+
+    metadata = {"filename": file_data["filename"]}
+    if api_key:
+        metadata["api_key_id"] = api_key.id
 
     audit_log.log(
         event=AuditEvent.FILE_DOWNLOADED,
         resource_id=id,
         resource_type="file",
-        metadata={"filename": file_data["filename"]},
+        metadata=metadata,
         ip_address=request.client.host if request.client else None,
     )
 
