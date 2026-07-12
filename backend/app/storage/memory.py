@@ -49,7 +49,7 @@ class MemoryStorage:
             return True
         return False
 
-    def cleanup_expired(self) -> int:
+    def cleanup_expired(self) -> list[str]:
         import asyncio
         from app.webhooks import notify_webhooks
 
@@ -64,4 +64,4 @@ class MemoryStorage:
                 asyncio.create_task(notify_webhooks(id, "expired"))
             except RuntimeError:
                 pass
-        return len(expired)
+        return expired

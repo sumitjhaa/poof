@@ -21,11 +21,19 @@ keepalive_task: Task | None = None
 
 async def cleanup_loop():
     import asyncio
+    from app.audit import audit_log, AuditEvent
+
     while True:
         await asyncio.sleep(60)
-        deleted = storage.cleanup_expired()
-        if deleted:
-            print(f"Cleaned up {deleted} expired secrets")
+        expired_ids = await storage.cleanup_expired()
+        for secret_id in expired_ids:
+            audit_log.log(
+                event=AuditEvent.SECRET_EXPIRED,
+                resource_id=secret_id,
+                resource_type="secret",
+            )
+        if expired_ids:
+            print(f"Cleaned up {len(expired_ids)} expired secrets")
 
 
 async def keepalive_loop():

@@ -64,7 +64,7 @@ export default function AuditPage() {
   };
 
   const filteredEntries = filter
-    ? entries.filter((e) => e.event.includes(filter) || e.resource_type.includes(filter))
+    ? entries.filter((e) => e.event.includes(filter) || e.resource_type.includes(filter) || (e.location || '').includes(filter))
     : entries;
 
   return (
@@ -102,7 +102,7 @@ export default function AuditPage() {
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by event or type..."
+            placeholder="Filter by event, type, or location..."
           />
         </div>
 
@@ -118,6 +118,7 @@ export default function AuditPage() {
               <span>Resource</span>
               <span>ID</span>
               <span>IP</span>
+              <span>Location</span>
             </div>
             {filteredEntries.map((entry) => (
               <div key={entry.id} className="table-row">
@@ -132,6 +133,7 @@ export default function AuditPage() {
                 <span className="table-cell">{entry.resource_type}</span>
                 <span className="table-cell-mono">{entry.resource_id.slice(0, 8)}...</span>
                 <span className="table-cell-mono">{entry.ip_address || '—'}</span>
+                <span className="table-cell">{entry.location || '—'}</span>
               </div>
             ))}
           </div>

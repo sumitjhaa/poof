@@ -2,8 +2,22 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from app.audit import audit_log, AuditEvent
+from app.geo import geo
 
 router = APIRouter()
+
+
+def _entry_to_dict(e) -> dict:
+    return {
+        "id": e.id,
+        "event": e.event.value,
+        "resource_id": e.resource_id,
+        "resource_type": e.resource_type,
+        "timestamp": e.timestamp.isoformat(),
+        "metadata": e.metadata,
+        "ip_address": e.ip_address,
+        "location": None,
+    }
 
 
 @router.get("/")
@@ -20,20 +34,21 @@ async def list_audit_logs(
         limit=limit,
     )
 
+    unique_ips = list({e.ip_address for e in entries if e.ip_address})
+    ip_locations: dict[str, str | None] = {}
+    for ip in unique_ips:
+        ip_locations[ip] = await geo.resolve(ip)
+
+    result = []
+    for e in entries:
+        d = _entry_to_dict(e)
+        if e.ip_address:
+            d["location"] = ip_locations.get(e.ip_address)
+        result.append(d)
+
     return {
-        "entries": [
-            {
-                "id": e.id,
-                "event": e.event.value,
-                "resource_id": e.resource_id,
-                "resource_type": e.resource_type,
-                "timestamp": e.timestamp.isoformat(),
-                "metadata": e.metadata,
-                "ip_address": e.ip_address,
-            }
-            for e in entries
-        ],
-        "total": len(entries),
+        "entries": result,
+        "total": len(result),
     }
 
 
@@ -42,25 +57,36 @@ async def export_audit_logs(
     format: str = Query(default="json", pattern="^(json|csv)$"),
     limit: int = Query(default=1000, ge=1, le=10000),
 ):
+    entries = audit_log.query(limit=limit)
+
+    unique_ips = list({e.ip_address for e in entries if e.ip_address})
+    ip_locations: dict[str, str | None] = {}
+    for ip in unique_ips:
+        ip_locations[ip] = await geo.resolve(ip)
+
+    data = []
+    for e in entries:
+        d = _entry_to_dict(e)
+        if e.ip_address:
+            d["location"] = ip_locations.get(e.ip_address)
+        data.append(d)
+
     if format == "json":
-        data = audit_log.export_json(limit=limit)
         return JSONResponse(
             content=data,
             headers={"Content-Type": "application/json"},
         )
     else:
-        # CSV export
         import csv
         import io
 
-        entries = audit_log.export_json(limit=limit)
-        if not entries:
+        if not data:
             return JSONResponse(content=[], headers={"Content-Type": "text/csv"})
 
         output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=entries[0].keys())
+        writer = csv.DictWriter(output, fieldnames=data[0].keys())
         writer.writeheader()
-        writer.writerows(entries)
+        writer.writerows(data)
 
         return JSONResponse(
             content=output.getvalue(),

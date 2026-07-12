@@ -33,7 +33,7 @@ class Storage:
             return await self._postgres.delete(id)
         return self._memory.delete(id)
 
-    async def cleanup_expired(self) -> int:
+    async def cleanup_expired(self) -> list[str]:
         if self._use_db:
             return await self._postgres.cleanup_expired()
         return self._memory.cleanup_expired()

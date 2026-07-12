@@ -157,6 +157,7 @@ export interface AuditEntry {
   timestamp: string;
   metadata: Record<string, unknown> | null;
   ip_address: string | null;
+  location: string | null;
 }
 
 export interface AuditStats {

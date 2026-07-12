@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 from app.api_keys import api_key_store, get_api_key_from_header
 from app.models import ErrorResponse
+from app.audit import audit_log, AuditEvent
 
 router = APIRouter()
 
@@ -26,8 +27,16 @@ class APIKeyListResponse(BaseModel):
 
 
 @router.post("/", response_model=APIKeyResponse, status_code=201)
-async def create_api_key(data: APIKeyCreate):
+async def create_api_key(request: Request, data: APIKeyCreate):
     api_key = api_key_store.generate(name=data.name, rate_limit=data.rate_limit)
+
+    audit_log.log(
+        event=AuditEvent.API_KEY_CREATED,
+        resource_id=api_key.id,
+        resource_type="api_key",
+        metadata={"name": data.name, "rate_limit": data.rate_limit},
+        ip_address=request.client.host if request.client else None,
+    )
 
     return APIKeyResponse(
         id=api_key.id,
@@ -59,9 +68,16 @@ async def list_api_keys():
 
 
 @router.delete("/{key_id}", responses={404: {"model": ErrorResponse}})
-async def revoke_api_key(key_id: str):
+async def revoke_api_key(request: Request, key_id: str):
     if not api_key_store.revoke(key_id):
         raise HTTPException(status_code=404, detail={"error": "not_found", "message": "API key not found"})
+
+    audit_log.log(
+        event=AuditEvent.API_KEY_REVOKED,
+        resource_id=key_id,
+        resource_type="api_key",
+        ip_address=request.client.host if request.client else None,
+    )
 
     return {"status": "revoked"}
 

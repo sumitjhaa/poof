@@ -102,7 +102,7 @@ class PostgresStorage:
             await session.commit()
             return result.rowcount > 0
 
-    async def cleanup_expired(self) -> int:
+    async def cleanup_expired(self) -> list[str]:
         session = await get_session()
         async with session:
             now = datetime.now(timezone.utc)
@@ -110,6 +110,7 @@ class PostgresStorage:
                 select(Secret).where(Secret.is_deleted == False, Secret.expires_at < now)
             )
             expired = result.scalars().all()
+            ids = [s.id for s in expired]
             for secret in expired:
                 await self.delete(secret.id)
-            return len(expired)
+            return ids

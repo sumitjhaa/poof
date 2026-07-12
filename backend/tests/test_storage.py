@@ -130,20 +130,20 @@ def test_cleanup_expired(store):
     store.create("expired", "data", expires_in=-1, max_views=10)
     store.create("valid", "data", expires_in=3600, max_views=10)
 
-    count = store.cleanup_expired()
-    assert count == 1
+    expired_ids = store.cleanup_expired()
+    assert expired_ids == ["expired"]
     assert store.get("expired") is None
     assert store.get("valid") is not None
 
 
 def test_cleanup_no_expired(store):
     store.create("id1", "data", expires_in=3600, max_views=10)
-    count = store.cleanup_expired()
-    assert count == 0
+    expired_ids = store.cleanup_expired()
+    assert expired_ids == []
 
 
 def test_cleanup_ignores_deleted(store):
     store.create("id1", "data", expires_in=-1, max_views=10)
     store.delete("id1")
-    count = store.cleanup_expired()
-    assert count == 0
+    expired_ids = store.cleanup_expired()
+    assert expired_ids == []
